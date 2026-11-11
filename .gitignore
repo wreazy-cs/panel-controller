@@ -1,9 +1,12 @@
 # Maven build output
 target/
+!.mvn/wrapper/maven-wrapper.jar
 
-# IntelliJ IDEA
+# IntelliJ IDEA (personal IDE settings are not part of the project)
 .idea/
 *.iml
+*.iws
+*.ipr
 out/
 
 # OS files
