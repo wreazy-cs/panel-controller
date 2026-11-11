@@ -1,0 +1,17 @@
+# Maven build output
+target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets: never commit these
+*.key
+*.pem
+.env
+config.local.*
