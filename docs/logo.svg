@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Panel Controller logo. Same geometry as tools/RenderLogo.java (256 grid). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="8" x2="0" y2="248" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3B74F0"/>
+      <stop offset="1" stop-color="#1E54CB"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#bg)"/>
+  <g fill="none" stroke-linecap="round" stroke-width="14">
+    <path d="M156 84H196M96 128H196M136 172H196" stroke="#fff" stroke-opacity="0.43"/>
+    <path d="M60 84H156M60 128H96M60 172H136" stroke="#fff"/>
+  </g>
+  <g fill="#fff">
+    <circle cx="156" cy="84" r="23"/>
+    <circle cx="96" cy="128" r="23"/>
+    <circle cx="136" cy="172" r="23"/>
+  </g>
+  <g fill="#1A47A8">
+    <circle cx="156" cy="84" r="8"/>
+    <circle cx="96" cy="128" r="8"/>
+    <circle cx="136" cy="172" r="8"/>
+  </g>
+</svg>

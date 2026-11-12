@@ -128,6 +128,7 @@ public final class PanelApp extends Application {
         BorderPane.setMargin(split, new Insets(10, 0, 0, 0));
         main.setCenter(split);
 
+        installIcons();
         mainScene = new Scene(main, 1040, 720);
         mainScene.getStylesheets().add(css());
         primary.setTitle("Panel Controller");
@@ -137,6 +138,27 @@ public final class PanelApp extends Application {
             showMain();
         }
         primary.show();
+    }
+
+    /** Logo on the main window and on every dialog opened later (title bar and taskbar). */
+    private void installIcons() {
+        List<javafx.scene.image.Image> icons = new ArrayList<>();
+        for (int size : new int[] {16, 24, 32, 48, 64, 128, 256}) {
+            var url = getClass().getResource("/icons/panel-controller-" + size + ".png");
+            if (url != null) {
+                icons.add(new javafx.scene.image.Image(url.toExternalForm()));
+            }
+        }
+        stage.getIcons().setAll(icons);
+        javafx.stage.Window.getWindows().addListener((javafx.collections.ListChangeListener<javafx.stage.Window>) change -> {
+            while (change.next()) {
+                for (javafx.stage.Window w : change.getAddedSubList()) {
+                    if (w instanceof Stage s && s.getIcons().isEmpty()) {
+                        s.getIcons().setAll(icons);
+                    }
+                }
+            }
+        });
     }
 
     private String css() {
@@ -349,10 +371,12 @@ public final class PanelApp extends Application {
             table.getItems().setAll(rows);
             long stale = rows.stream().filter(r -> r.state() == State.STALE || r.state() == State.NO_OUTPUT).count();
             long over = rows.stream().filter(r -> r.state() == State.OVER).count();
-            cardBuild.setText(stale > 0 ? stale + " dosya güncel değil, derle"
+            boolean noSources = rows.stream().allMatch(r -> r.state() == State.EMPTY);
+            cardBuild.setText(noSources ? "bu klasörde kaynak yok, 'Klasör seç'"
+                    : stale > 0 ? stale + " dosya güncel değil, derle"
                     : over > 0 ? over + " dosya slot hedefini aşıyor" : "güncel");
             cardBuild.getStyleClass().removeAll("warn", "good");
-            cardBuild.getStyleClass().add(stale > 0 || over > 0 ? "warn" : "good");
+            cardBuild.getStyleClass().add(noSources || stale > 0 || over > 0 ? "warn" : "good");
 
             Optional<Duration> age = ProjectStatus.backupAge(c, Clock.systemDefaultZone());
             cardBackup.setText(age.map(ProjectStatus::describeAge).orElse("hiç yedek yok"));
