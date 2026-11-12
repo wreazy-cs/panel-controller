@@ -16,22 +16,29 @@ Panel Controller makes the upload workflow safe:
 - **restore** an earlier live version to the clipboard when something breaks
 - **commit and push** with git, refusing to push when build or validation is not clean
 
-> **Status: 0.5 beta.** The user interface is in Turkish.
+> **Status: 0.6 beta.** The user interface is in Turkish.
 
-## Requirements
+## Install (end users)
 
-Java 25 or newer, Maven. Node.js is optional (JS syntax check). Python is only needed for a
-project's own test bench script.
+Run `Panel Controller-<version>.exe`. It installs per user (no administrator rights), adds a desktop
+and Start menu shortcut, and **brings its own Java**, so nothing else is required. On first start a
+welcome window shows the system check: Git (Git page), Node.js (JS syntax check) and Python (test bench,
+project scripts) are optional; a missing one can be installed with winget from there.
 
-## Build and run
+## Build (developers)
+
+Requirements: JDK 25 or newer, Maven.
 
 ```
 mvn package
-powershell -ExecutionPolicy Bypass -File create-shortcut.ps1
+powershell -ExecutionPolicy Bypass -File create-shortcut.ps1      # developer shortcut, runs from target/
+powershell -ExecutionPolicy Bypass -File build-installer.ps1      # dist\Panel Controller-<version>.exe
 ```
 
-Then open "Panel Controller" from the desktop. After changing the code, run `mvn package` again; the
-shortcut uses the new build. `run-gui.cmd` starts the same window with a console that shows errors.
+`build-installer.ps1` needs WiX Toolset 3.14 on the PATH for the `.exe`/`.msi`
+(`-Type app-image` builds a runnable folder without WiX). Do not run `mvn package` while the
+developer build is open: it replaces the jar under the running app. The installed version is not affected.
+`run-gui.cmd` starts the developer build with a console that shows errors.
 
 On first start choose the project folder (the one that contains `kaynak/`) and enter the store's CDN
 address under **Ayarlar** (settings). Settings are kept per project; no config file is needed.
@@ -45,6 +52,7 @@ address under **Ayarlar** (settings). Settings are kept per project; no config f
 | Git | Pick changed files, commit (`13.11.2026-Persembe-14.05 message -p` + link to this app), push |
 | Görevler | The project's `tasks/` folder by state |
 | Araçlar | Page preview, local test bench (127.0.0.1 only), session notes |
+| API | Read-only calls to the PlatinMarket Reform API (store info, exchange rates, brands, categories ...) |
 | Sürüm notları | What the app is for and what changed in each version |
 | Hakkında | Author, version, licence, components |
 | Ayarlar | Project folder, CDN address, limits, theme (light/dark), API key and PIN |
@@ -53,7 +61,15 @@ Results appear as cards in the **İşlemler** panel instead of a log. Problems c
 (`PC-101` ... `PC-901`); clicking it opens the in-app **user guide** at that code. The guide has
 searchable headings, diagrams and the full error table (generated from `Problem.java`).
 
-Shortcuts: `F5` refresh and compare, `F1` guide, `Ctrl+1` ... `Ctrl+8` pages.
+Shortcuts: `F5` refresh and compare, `F1` guide, `Ctrl+1` ... `Ctrl+9` pages.
+
+## PlatinMarket API
+
+The Reform API is documented at developer.platinmarket.com:
+`https://developer.platinmarket.com/reform/<controller>/<action>.json?access_token=<key>`. The key is
+created in the store panel under Araçlar > API Anahtarları and is tied to an IP address. Errors come back
+as HTTP 200 with `response.error.code` set; the app reports them as PC-710. **The API has no endpoints for
+the theme CSS/JS slots**, so uploading stays manual (the upload wizard).
 
 ## Project layout
 
@@ -118,7 +134,8 @@ malware on your account.
 2. ~~Desktop interface~~
 3. ~~API key storage (PIN + DPAPI)~~
 4. ~~Upload workflow from the Python predecessor: prepare, paste order, wizard, git, tasks, tools~~
-5. Read-only API calls
+5. ~~Read-only API calls, system check, Windows installer~~
+6. API features beyond probing (e.g. low-stock report, product checks)
 
 ## License
 
