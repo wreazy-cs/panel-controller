@@ -11,7 +11,7 @@ version history. Panel Controller makes that workflow safe:
 - **backup** the live version first, and **restore** it to the clipboard when something goes wrong
 - **compare** local files with what is actually live
 
-> **Status: 0.1, command line works.** Desktop interface (JavaFX) is planned.
+> **Status: 0.1.** Command line and desktop window both work.
 
 ## Requirements
 
@@ -21,8 +21,24 @@ Java 21 or newer, Maven. Node.js is optional (used for a JS syntax check).
 
 ```
 mvn package
+```
+
+Command line:
+
+```
 java -jar target/panel-controller-0.1.0-SNAPSHOT.jar --root <project dir> --config <file> <command>
 ```
+
+Desktop window (needs the JavaFX jars that `mvn package` copies to `target/lib`):
+
+```
+run-gui.cmd [--root <project dir>] [--config <file>]
+```
+
+The window shows four cards (last backup, build state, live difference, git), a table of the slots,
+and buttons for every command. Before copying a file to the clipboard it warns if the output is
+older than the sources, if a slot is over its target, or if there is no recent backup.
+The chosen project folder and config file are remembered between runs.
 
 ## Project layout
 
@@ -44,6 +60,7 @@ Directory names, the CDN URL and the slot list can be changed in a properties fi
 | `check` | `build` + `validate`. |
 | `backup` | Downloads the live files. Fails if any file is missing, so you never upload without a backup. |
 | `compare [--dir d]` | Diffs local files against the live CDN (cache-busting query on every request). |
+| `status` | Slot sizes, whether output is current, backup age, git state. |
 | `backups` | Lists backups, newest first. |
 | `copy <file>` | Copies an output file to the clipboard. |
 | `restore <stamp\|latest> <file>` | Copies a backed-up file to the clipboard for pasting back. |
@@ -61,8 +78,8 @@ contains no comments (the files are publicly readable from the CDN).
 
 1. ~~Skeleton, license, documentation~~
 2. ~~Core library and command line: build, validate, backup, compare, restore, clipboard~~
-3. Desktop interface (JavaFX)
-4. Git integration and read-only API experiments
+3. ~~Desktop interface (JavaFX)~~
+4. Read-only API experiments (needs a safe way to store the API key)
 
 ## License
 
