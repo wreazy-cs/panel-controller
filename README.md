@@ -1,6 +1,8 @@
+<p align="center"><img src="docs/logo.svg" width="96" alt="Panel Controller logo"></p>
+
 # Panel Controller
 
-Command line tool for PlatinMarket-based online stores (unofficial, not affiliated).
+Desktop and command line tool for PlatinMarket-based online stores (unofficial, not affiliated).
 
 PlatinMarket lets store owners add custom CSS and JS only by pasting code into the admin panel.
 Doing this by hand is risky: a mistake can break a live store, and there is no built-in backup or
@@ -29,11 +31,17 @@ Command line:
 java -jar target/panel-controller-0.1.0-SNAPSHOT.jar --root <project dir> --config <file> <command>
 ```
 
-Desktop window (needs the JavaFX jars that `mvn package` copies to `target/lib`):
+Desktop window, everyday use: create a desktop shortcut once (logo, no console window):
 
 ```
-run-gui.cmd [--root <project dir>] [--config <file>]
+powershell -ExecutionPolicy Bypass -File create-shortcut.ps1
 ```
+
+then open "Panel Controller" from the desktop. After changing the code, run `mvn package` again;
+the shortcut picks up the new build.
+
+For troubleshooting, `run-gui.cmd [--root <project dir>] [--config <file>]` starts the same window
+with a console that shows errors.
 
 The window shows four cards (last backup, build state, live difference, git), a table of the slots,
 and buttons for every command. Before copying a file to the clipboard it warns if the output is
