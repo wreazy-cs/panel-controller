@@ -1,0 +1,17 @@
+# Copy to e.g. local/store.properties (the local/ folder is git-ignored) and pass it with --config.
+
+# Live file URL; %s is replaced by the file name (genel.css, ...). Needed for backup and compare.
+cdn=https://cdn.example.com/STORE_ID/tema/%s
+
+# Optional: slots as folder:outputFile:Panel name, separated by ';'. Default is the 10 PlatinMarket slots.
+#slots=genel:genel.css:CSS / Genel;genel-js:genel.js:JS / Genel
+
+# Optional limits (characters)
+#budget=355000
+#slotTarget=65000
+
+# Optional directories, relative to --root
+#sourceDir=kaynak
+#outputDir=cikti
+#backupDir=veri/yedek
+#generatedDir=veri/uretilen
