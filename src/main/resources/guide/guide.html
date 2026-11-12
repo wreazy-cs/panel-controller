@@ -137,7 +137,7 @@
   <section id="kurulum" data-group="Başlarken">
     <h2>İlk kurulum</h2>
     <ol class="steps">
-      <li><b>Uygulamayı aç.</b> Masaüstündeki <i>Panel Controller</i> simgesine çift tıkla. Simge yoksa proje klasöründe <code>create-shortcut.ps1</code> çalıştırılır.</li>
+      <li><b>Kur ve aç.</b> <code>Panel Controller-&lt;sürüm&gt;.exe</code> kurulum dosyasını çalıştır (yönetici izni gerekmez, Java gerekmez: uygulamanın içinde gelir). Kurulum masaüstüne ve Başlat menüsüne <i>Panel Controller</i> ekler. İlk açılışta karşılama penceresi neyin eksik olduğunu gösterir (<a href="#sistem" data-go="sistem">Sistem kontrolü</a>).</li>
       <li><b>Proje klasörünü seç.</b> Ayarlar → Proje → <i>Klasör seç…</i>. İçinde <code>kaynak/</code> olan klasör seçilmeli (örnek: <code>IC Elektronik\ic-web</code>). Seçim hatırlanır.</li>
       <li><b>Mağaza CDN adresini gir.</b> Ayarlar → <i>Mağaza CDN adresi</i>: <code>https://platincdn.com/&lt;mağaza no&gt;/tema/%s</code>. <i>Bağlantıyı dene</i> ile kontrol et, <i>Kaydet</i>'e bas.</li>
       <li><b>İstersen temayı seç.</b> Ayarlar → Görünüm → Açık ya da Koyu.</li>
@@ -294,6 +294,39 @@ Panel Controller ile gönderildi: https://github.com/wreazy-cs/panel-controller<
     <p><code>veri/oturumlar/OTURUM-&lt;tarih&gt;-&lt;ad&gt;.md</code> dosyasını başlangıç saatiyle açar (git dışı). Oturumun ilk işi; bitirirken ne yapıldığını, yüklenip yüklenmediğini ve geri alma yolunu yaz. Var olan not asla üzerine yazılmaz.</p>
   </section>
 
+  <section id="api" data-group="Ekranlar">
+    <h2>API okuma denemesi</h2>
+    <p>PlatinMarket'in <b>Reform API</b>'si <code>https://developer.platinmarket.com/reform/&lt;bölüm&gt;/&lt;işlem&gt;.json?access_token=…</code> kalıbını kullanır. Ürün, sipariş, üye, kategori, marka, kupon, kargo ve döviz kuru verilerini verir; <b>tema CSS/JS slotları için uç noktası yoktur</b>, bu yüzden panele yükleme Yayın sayfasındaki sihirbazla elle yapılır. Bu sayfa hazır okuma isteklerinden birini seçip ya da belgedeki yolu yazıp <b>yalnızca GET</b> isteği atmanı sağlar.</p>
+    <div class="note warn">API hatayı da <b>HTTP 200</b> ile döndürür; hata yanıtın içindeki <code>error.code</code> alanındadır (100 anahtar yok, 101 geçersiz, 102 süresi dolmuş…). Uygulama bunu okur ve <a href="#PC-710" data-go="PC-710">PC-710</a> olarak gösterir.</div>
+    <ol class="steps">
+      <li><b>IP adresini öğren:</b> <i>Genel IP adresimi göster</i>. PlatinMarket anahtarları IP'ye bağlıdır.</li>
+      <li><b>Panelde anahtar oluştur:</b> Araçlar → API Anahtarları → Yeni API Anahtarı, bu IP ile.</li>
+      <li><b>Anahtarı gir:</b> <i>Anahtarı gir / değiştir</i> (Ayarlar'daki ile aynı; isteğe bağlı olarak PIN ile saklanır).</li>
+      <li><b>Belgedeki adresi ve yolu yaz</b>, <i>Okuma denemesi</i>'ne bas. Anahtar yeni bir sunucuya ilk kez gidecekse uygulama sorar.</li>
+    </ol>
+    <table>
+      <tr><th>Güvenlik kuralı</th><th>Neden</th></tr>
+      <tr><td>Yalnızca https</td><td>Anahtar şifresiz bağlantıyla gitmesin</td></tr>
+      <tr><td>Yönlendirme izlenmez</td><td>Anahtar başka bir sunucuya taşınmasın (<a href="#PC-706" data-go="PC-706">PC-706</a>)</td></tr>
+      <tr><td>Anahtar her yerde *** olur</td><td>Düz, URL kodlu, base64 ve hex biçimleri maskelenir</td></tr>
+      <tr><td>Yalnızca GET, en çok 200 KB</td><td>Deneme hiçbir şeyi değiştiremez</td></tr>
+    </table>
+    <p>Durum kodlarının anlamı için <a href="#PC-703" data-go="PC-703">PC-703</a> (401), <a href="#PC-704" data-go="PC-704">PC-704</a> (403, çoğunlukla IP), <a href="#PC-705" data-go="PC-705">PC-705</a> (404).</p>
+  </section>
+
+  <section id="sistem" data-group="Başlarken">
+    <h2>Sistem kontrolü</h2>
+    <p>Ayarlar → <i>Sistem kontrolü</i> (ve ilk açılıştaki karşılama penceresi) bilgisayarda neyin hazır olduğunu gösterir. Java uygulamanın içinde gelir; diğerleri isteğe bağlıdır ve her biri bir özelliği açar:</p>
+    <table>
+      <tr><th>Araç</th><th>Olmazsa</th></tr>
+      <tr><td>Git</td><td>Git sayfası ve Git kartı çalışmaz</td></tr>
+      <tr><td>Node.js</td><td>Doğrulamada JS sözdizimi denetimi atlanır (<a href="#PC-208" data-go="PC-208">PC-208</a>)</td></tr>
+      <tr><td>Python</td><td>Test tezgahı ve projenin Python betikleri çalışmaz; betiklerin sözdizimi de denetlenemez</td></tr>
+      <tr><td>winget</td><td>Eksik araçlar tek tıkla kurulamaz; kendi sitelerinden kurulur</td></tr>
+    </table>
+    <p><i>Kur</i> düğmesi bir komut penceresinde <code>winget install</code> açar; lisans ve yönetici izni o pencerede sorulur, onayı sen verirsin. Bitince <i>Yeniden denetle</i>.</p>
+  </section>
+
   <section id="ayarlar" data-group="Ekranlar">
     <h2>Ayarlar</h2>
     <table>
@@ -407,7 +440,7 @@ Panel Controller ile gönderildi: https://github.com/wreazy-cs/panel-controller<
     <table>
       <tr><td><kbd>F5</kbd></td><td>Yenile (ve canlıyla karşılaştır)</td></tr>
       <tr><td><kbd>F1</kbd></td><td>Bu kılavuzu aç</td></tr>
-      <tr><td><kbd>Ctrl</kbd>+<kbd>1</kbd> … <kbd>8</kbd></td><td>Sol menüdeki sayfalar sırasıyla</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>1</kbd> … <kbd>9</kbd></td><td>Sol menüdeki sayfalar sırasıyla</td></tr>
       <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd></td><td>Kılavuzdayken arama kutusuna git</td></tr>
     </table>
   </section>

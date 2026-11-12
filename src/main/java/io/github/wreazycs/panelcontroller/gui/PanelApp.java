@@ -101,7 +101,7 @@ public final class PanelApp extends Application {
         publish = new PublishPage(ctx);
         tools = new ToolsPage(ctx);
         pages.addAll(List.of(publish, new RestorePage(ctx), new GitPage(ctx), new TasksPage(ctx), tools,
-                new NotesPage(), new AboutPage(ctx),
+                new ApiPage(ctx, vaultUi), new NotesPage(), new AboutPage(ctx),
                 new SettingsPage(ctx, vaultUi, this::changeProject, this::setTheme, () -> theme, this::showLock)));
 
         TabPane tabs = new TabPane();
@@ -188,7 +188,7 @@ public final class PanelApp extends Application {
 
         VBox nav = new VBox(2);
         ToggleGroup group = new ToggleGroup();
-        String[] groups = {"Çalışma", null, null, null, null, "Uygulama", null, null};
+        String[] groups = {"Çalışma", null, null, null, null, null, "Uygulama", null, null};
         for (int i = 0; i < pages.size(); i++) {
             Page p = pages.get(i);
             if (groups[i] != null) {
@@ -384,6 +384,34 @@ public final class PanelApp extends Application {
         stage.setScene(mainScene);
         show(current == null ? "publish" : current.id());
         publish.compareQuietly();
+        if (!prefs.getBoolean("welcomed", false)) {
+            Platform.runLater(this::welcome);
+        }
+    }
+
+    /** First start: what to set up, with the system check, then straight to the settings page. */
+    private void welcome() {
+        prefs.putBoolean("welcomed", true);
+        SystemCheckView check = new SystemCheckView(ctx, () -> ctx.cfg.root());
+        VBox body = new VBox(12,
+                Ui.wrapped("Başlamak için üç adım:"),
+                Ui.wrapped("1.  Ayarlar → Proje: içinde kaynak/ olan proje klasörünü seç."),
+                Ui.wrapped("2.  Ayarlar → Mağaza CDN adresi: canlı tema dosyalarının adresini gir ve Kaydet."),
+                Ui.wrapped("3.  Aşağıda eksik görünen araç varsa Kur'a bas (isteğe bağlı)."),
+                Ui.label("Sistem kontrolü", "section-title"), check);
+        body.setPrefWidth(720);
+        javafx.scene.control.Dialog<javafx.scene.control.ButtonType> d = new javafx.scene.control.Dialog<>();
+        d.initOwner(stage);
+        d.setTitle(AppInfo.NAME);
+        d.setHeaderText(AppInfo.NAME + "'a hoş geldin");
+        d.getDialogPane().setContent(body);
+        javafx.scene.control.ButtonType go = new javafx.scene.control.ButtonType("Ayarlara git",
+                javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        d.getDialogPane().getButtonTypes().addAll(go, Ui.CANCEL);
+        check.check();
+        if (d.showAndWait().filter(b -> b == go).isPresent()) {
+            show("settings");
+        }
     }
 
     // ---------------------------------------------------------------- icons and dialogs

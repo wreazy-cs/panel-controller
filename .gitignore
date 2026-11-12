@@ -21,3 +21,6 @@ config.local.*
 
 # Local project configs (contain store-specific data)
 local/
+
+# Built installers (large binaries; share them as release files, not in git)
+dist/

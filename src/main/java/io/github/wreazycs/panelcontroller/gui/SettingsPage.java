@@ -43,6 +43,8 @@ final class SettingsPage implements Page {
     private final ToggleButton light = new ToggleButton("Açık");
     private final ToggleButton dark = new ToggleButton("Koyu");
     private Supplier<String> theme;
+    private SystemCheckView systemView;
+    private boolean systemChecked;
 
     SettingsPage(AppContext ctx, VaultUi vaultUi, Consumer<Path> projectChooser, Consumer<String> themeSetter,
                  Supplier<String> theme, Runnable lockNow) {
@@ -135,7 +137,11 @@ final class SettingsPage implements Page {
                         "Kayıtlı anahtar ve hata günlüğü " + ErrorLog.file().getParent() + " altında durur (OneDrive ve git dışında)."),
                 new HBox(errors));
 
-        VBox content = new VBox(16, project, appearance, keys, files);
+        systemView = new SystemCheckView(ctx, () -> ctx.cfg.root());
+        VBox system = Ui.card(Ui.cardHeader("Sistem kontrolü",
+                "Java uygulamanın içinde gelir. Git, Node.js ve Python isteğe bağlıdır; her biri bir özelliği açar."), systemView);
+
+        VBox content = new VBox(16, project, system, appearance, keys, files);
         content.setPadding(new Insets(4, 24, 24, 24));
         view = new ScrollPane(content);
         view.setFitToWidth(true);
@@ -161,6 +167,10 @@ final class SettingsPage implements Page {
         slotTarget.setText(String.valueOf(ctx.settings.slotTarget));
         budget.setText(String.valueOf(ctx.settings.budget));
         (theme.get().equals("dark") ? dark : light).setSelected(true); // the side menu can switch it too
+        if (!systemChecked) {
+            systemChecked = true;
+            systemView.check();
+        }
         keyState.setText(vaultUi.statusText());
         boolean stored = vaultUi.hasStoredKey();
         changePin.setDisable(!stored);

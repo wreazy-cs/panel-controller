@@ -13,7 +13,7 @@ import java.util.List;
  */
 public final class AppInfo {
     public static final String NAME = "Panel Controller";
-    public static final String VERSION = "0.5.0";
+    public static final String VERSION = "0.6.0";
     public static final String STAGE = "beta";
     public static final String AUTHOR = "Samet Şafak";
     public static final String GITHUB = "https://github.com/wreazy-cs/panel-controller";
@@ -35,6 +35,22 @@ public final class AppInfo {
 
     /** Newest first. */
     public static final List<Release> RELEASES = List.of(
+            new Release("0.6.0", LocalDate.of(2026, 11, 13), "API, sistem kontrolü ve kurulum dosyası",
+                    List.of(
+                            "API sayfası: PlatinMarket Reform API'sine (developer.platinmarket.com) yalnızca okuyan istekler. Hazır "
+                                    + "istekler (mağaza bilgisi, döviz kurları, markalar, kategoriler ...); kişisel veri döndüren uçlar "
+                                    + "bilerek yok. Anahtar yalnızca https ile gider, yönlendirme izlenmez, çıktıda her biçimiyle maskelenir; "
+                                    + "yeni bir sunucuya ilk gönderimde onay istenir.",
+                            "API hatası HTTP 200 içinde (error.code) gelse bile yakalanır: PC-710.",
+                            "Genel IP adresini gösteren düğme (anahtarlar IP'ye bağlı oluşturuluyor).",
+                            "Sistem kontrolü (Ayarlar ve ilk açılış): Git, Node.js, Python, winget ve projenin Python betiklerinin "
+                                    + "sözdizimi; eksik araç winget ile kurulabilir (onayı kişi verir).",
+                            "İlk açılışta karşılama penceresi.",
+                            "Windows kurulum dosyası: Java içinde gelir, yönetici izni gerekmez, Başlat menüsü ve masaüstü kısayolu, "
+                                    + "kaldırma desteği (build-installer.ps1)."),
+                    List.of("Kılavuza API ve Sistem kontrolü bölümleri; sayfa kısayolları Ctrl+1 ... Ctrl+9.",
+                            "Bulgu: Reform API'de tema CSS/JS slotları için uç nokta yok; panele yükleme sihirbazla elle kalır."),
+                    List.of()),
             new Release("0.5.0", LocalDate.of(2026, 11, 13), "Yeni arayüz ve Python Kumanda'nın iş akışı",
                     List.of(
                             "Sol menülü yeni arayüz: Yayın, Geri dön, Git, Görevler, Araçlar, Sürüm notları, Hakkında, Ayarlar.",

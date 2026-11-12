@@ -131,6 +131,7 @@ final class GuideTab {
             case '4' -> "4xx · Git";
             case '5' -> "5xx · API anahtarı";
             case '6' -> "6xx · Araçlar";
+            case '7' -> "7xx · API denemesi";
             default -> "9xx · Beklenmeyen";
         };
     }

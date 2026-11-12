@@ -25,6 +25,14 @@ final class ProjectSettings {
     String cdn;
     int budget;
     int slotTarget;
+    // API probe (the key itself is never kept here)
+    String apiBase;
+    String apiPath;
+    String apiAuth;
+    String apiName;
+    String apiPrefix;
+    /** Host the person confirmed the key may be sent to. */
+    String apiTrustedHost;
 
     private ProjectSettings(Preferences app, Path root) {
         this.root = root.toAbsolutePath().normalize();
@@ -32,6 +40,22 @@ final class ProjectSettings {
         this.cdn = node.get("cdn", "");
         this.budget = node.getInt("budget", DEFAULT_BUDGET);
         this.slotTarget = node.getInt("slotTarget", DEFAULT_SLOT_TARGET);
+        // defaults: PlatinMarket Reform API (developer.platinmarket.com), key as ?access_token=
+        this.apiBase = node.get("apiBase", io.github.wreazycs.panelcontroller.ApiProbe.REFORM_BASE);
+        this.apiPath = node.get("apiPath", "/reform/products/info.json");
+        this.apiAuth = node.get("apiAuth", "QUERY");
+        this.apiName = node.get("apiName", "access_token");
+        this.apiPrefix = node.get("apiPrefix", "");
+        this.apiTrustedHost = node.get("apiTrustedHost", "");
+    }
+
+    void saveApi() {
+        node.put("apiBase", apiBase);
+        node.put("apiPath", apiPath);
+        node.put("apiAuth", apiAuth);
+        node.put("apiName", apiName);
+        node.put("apiPrefix", apiPrefix);
+        node.put("apiTrustedHost", apiTrustedHost);
     }
 
     static ProjectSettings load(Preferences app, Path root) {
