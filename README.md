@@ -3,50 +3,57 @@
 # Panel Controller
 
 Desktop and command line tool for PlatinMarket-based online stores (unofficial, not affiliated).
+Made by Samet Şafak.
 
 PlatinMarket lets store owners add custom CSS and JS only by pasting code into the admin panel.
-Doing this by hand is risky: a mistake can break a live store, and there is no built-in backup or
-version history. Panel Controller makes that workflow safe:
+There is no backup, no version history and no validation, and the panel can corrupt code on save.
+Panel Controller makes the upload workflow safe:
 
-- **build** many small source files into the few files the panel accepts (reproducible output)
-- **validate** them before upload by imitating what the panel does on save
-- **backup** the live version first, and **restore** it to the clipboard when something goes wrong
-- **compare** local files with what is actually live
+- **prepare**: back up the live files, build the small source pieces into the panel files, and
+  simulate what the panel does on save; stop at the first problem
+- **compare** with the live site and **paste in the right order** with a step-by-step wizard
+  (page slots first, the general slot last)
+- **restore** an earlier live version to the clipboard when something breaks
+- **commit and push** with git, refusing to push when build or validation is not clean
 
-> **Status: 0.1.** Command line and desktop window both work.
+> **Status: 0.5 beta.** The user interface is in Turkish.
 
 ## Requirements
 
-Java 21 or newer, Maven. Node.js is optional (used for a JS syntax check).
+Java 25 or newer, Maven. Node.js is optional (JS syntax check). Python is only needed for a
+project's own test bench script.
 
 ## Build and run
 
 ```
 mvn package
-```
-
-Command line:
-
-```
-java -jar target/panel-controller-0.1.0-SNAPSHOT.jar --root <project dir> --config <file> <command>
-```
-
-Desktop window, everyday use: create a desktop shortcut once (logo, no console window):
-
-```
 powershell -ExecutionPolicy Bypass -File create-shortcut.ps1
 ```
 
-then open "Panel Controller" from the desktop. After changing the code, run `mvn package` again;
-the shortcut picks up the new build.
+Then open "Panel Controller" from the desktop. After changing the code, run `mvn package` again; the
+shortcut uses the new build. `run-gui.cmd` starts the same window with a console that shows errors.
 
-For troubleshooting, `run-gui.cmd [--root <project dir>] [--config <file>]` starts the same window
-with a console that shows errors.
+On first start choose the project folder (the one that contains `kaynak/`) and enter the store's CDN
+address under **Ayarlar** (settings). Settings are kept per project; no config file is needed.
 
-The window shows four cards (last backup, build state, live difference, git), a table of the slots,
-and buttons for every command. Before copying a file to the clipboard it warns if the output is
-older than the sources, if a slot is over its target, or if there is no recent backup.
-The chosen project folder and config file are remembered between runs.
+## The window
+
+| Page | What it is for |
+|---|---|
+| Yayın | Status cards, Prepare with a step indicator, file table in paste order with live state, upload wizard |
+| Geri dön | Backups, newest first; copy a file back to the clipboard |
+| Git | Pick changed files, commit (`13.11.2026-Persembe-14.05 message -p` + link to this app), push |
+| Görevler | The project's `tasks/` folder by state |
+| Araçlar | Page preview, local test bench (127.0.0.1 only), session notes |
+| Sürüm notları | What the app is for and what changed in each version |
+| Hakkında | Author, version, licence, components |
+| Ayarlar | Project folder, CDN address, limits, theme (light/dark), API key and PIN |
+
+Results appear as cards in the **İşlemler** panel instead of a log. Problems carry a code
+(`PC-101` ... `PC-901`); clicking it opens the in-app **user guide** at that code. The guide has
+searchable headings, diagrams and the full error table (generated from `Problem.java`).
+
+Shortcuts: `F5` refresh and compare, `F1` guide, `Ctrl+1` ... `Ctrl+8` pages.
 
 ## Project layout
 
@@ -54,63 +61,63 @@ The chosen project folder and config file are remembered between runs.
 <root>/kaynak/<slot>/*.css|*.js   source pieces (first line: /*@vt <no> | <title> | ezer: <what it overrides> */)
 <root>/cikti/                     files to paste into the panel
 <root>/veri/yedek/<stamp>/        backups of the live files
+<root>/veri/sayfalar/*.html       panel page contents (preview)
+<root>/veri/oturumlar/            session notes
+<root>/tasks/                     tasks: <date>_<slug>_<status>.md
 ```
 
-Directory names, the CDN URL and the slot list can be changed in a properties file, see
-[panel-controller.properties.example](panel-controller.properties.example).
+## Command line
 
-## Commands
+```
+java -jar target/panel-controller.jar --root <project dir> --config <file> <command>
+```
 
 | Command | What it does |
 |---|---|
+| `prepare` | Backup + build + validate; stops at the first failure, then prints the paste order. |
 | `build [--readable\|--commented] [slot...]` | Builds the panel files. `--readable` / `--commented` make review copies that are never pasted. |
 | `validate` | Panel simulation: HTML entities, windows-1254 round trip, budget, JS syntax, CSS balance, leftover comments. |
 | `check` | `build` + `validate`. |
 | `backup` | Downloads the live files. Fails if any file is missing, so you never upload without a backup. |
 | `compare [--dir d]` | Diffs local files against the live CDN (cache-busting query on every request). |
+| `order` | Files to paste, in order. |
 | `status` | Slot sizes, whether output is current, backup age, git state. |
 | `backups` | Lists backups, newest first. |
 | `copy <file>` | Copies an output file to the clipboard. |
 | `restore <stamp\|latest> <file>` | Copies a backed-up file to the clipboard for pasting back. |
+| `tasks [all]` | Active tasks. |
+| `note <name>` | Opens today's session note with the start time. |
+| `version` | Version and release notes. |
 
-Typical flow: `check` → `backup` → paste into the panel → `compare`.
+The command line reads the CDN address from a properties file (`--config`, see
+[panel-controller.properties.example](panel-controller.properties.example)). There is deliberately no
+command that touches the API key.
 
 ## API key
 
-Entered from the ⚙ menu (top right of the window). It is never written to the screen, the log or
-the clipboard; only its last four characters are shown. There is no command line access to it.
+Entered under **Ayarlar**. It is never written to the screen, the log or the clipboard; only its last
+four characters are shown.
 
 - **"Remember" unticked:** kept in memory only, gone when the app closes.
 - **"Remember" ticked:** you set a 4-digit PIN first. The key is stored in
   `%LOCALAPPDATA%\PanelController\vault.bin` and the app asks for the PIN on every start.
-- **⚙ menu:** change PIN, remove PIN (deletes the stored key), lock now.
+- Change PIN, remove PIN (deletes the stored key), lock now: also under Ayarlar.
 - **Forgot the PIN:** "PIN'imi unuttum" on the lock screen deletes the stored key; enter it again.
 
-How it is protected:
-
-- AES-256-GCM, with the key derived from the PIN (PBKDF2-HMAC-SHA256, 600,000 rounds, random salt)
-- wrapped in Windows DPAPI: only your Windows account on this computer can open the file
-- file access list: owner only; location outside OneDrive and outside any git repository
-- 5 wrong PINs delete the stored key
+How it is protected: AES-256-GCM with a key derived from the PIN (PBKDF2-HMAC-SHA256, 600,000 rounds,
+random salt), wrapped in Windows DPAPI (only your Windows account on this computer can open it), file
+access limited to the owner, stored outside OneDrive and git. 5 wrong PINs delete the stored key.
 
 Limits, stated plainly: 4 digits are 10,000 combinations. Software already running as your Windows
-user can bypass the attempt counter and try them all. The PIN stops someone who sits down at the
-app; it does not stop malware on your account. Persistent storage is Windows only; elsewhere the
-key is kept for the session.
-
-## Rules enforced by `build`
-
-JS sources are pure ASCII; no HTML entities; everything fits windows-1254; every piece starts with a
-meta line with a unique number; JS pieces end with `;` and have no multi-line strings or template
-literals; CSS compression is re-parsed and must equal the uncompressed rules; the panel copy
-contains no comments (the files are publicly readable from the CDN).
+user can bypass the attempt counter. The PIN stops someone who sits down at the app; it does not stop
+malware on your account.
 
 ## Roadmap
 
-1. ~~Skeleton, license, documentation~~
-2. ~~Core library and command line: build, validate, backup, compare, restore, clipboard~~
-3. ~~Desktop interface (JavaFX)~~
-4. ~~API key storage (PIN + DPAPI)~~
+1. ~~Core library and command line~~
+2. ~~Desktop interface~~
+3. ~~API key storage (PIN + DPAPI)~~
+4. ~~Upload workflow from the Python predecessor: prepare, paste order, wizard, git, tasks, tools~~
 5. Read-only API calls
 
 ## License
