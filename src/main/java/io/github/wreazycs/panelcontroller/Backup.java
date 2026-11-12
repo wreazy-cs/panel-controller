@@ -22,6 +22,11 @@ public final class Backup {
         this.out = out;
     }
 
+    /** For read-only use (list, find) where nothing should be printed. */
+    public static Backup quiet(ProjectConfig cfg) {
+        return new Backup(cfg, new PrintStream(java.io.OutputStream.nullOutputStream()));
+    }
+
     /** @return exit code; non-zero when any file could not be downloaded (never upload without a backup). */
     public int run(Cdn cdn) throws IOException {
         String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm"));

@@ -24,6 +24,7 @@ public final class Main {
               check                build + validate in one step.
               backup               Download the live files into the backup dir. Run before uploading.
               compare [--dir <d>]  Compare local output with the live CDN files.
+              status               Slot sizes, whether output is current, backup age, git state.
               backups              List backups, newest first.
               copy <file>          Copy an output file (e.g. genel.css) to the clipboard.
               restore <stamp|latest> <file>
@@ -96,6 +97,19 @@ public final class Main {
                     dir = root.resolve(a.get(1));
                 }
                 return new Comparer(cfg, out).run(new Cdn(cfg.cdnTemplate()), dir);
+            }
+            case "status": {
+                for (ProjectStatus.SlotRow r : ProjectStatus.slotRows(cfg)) {
+                    if (r.state() == ProjectStatus.State.EMPTY) {
+                        continue;
+                    }
+                    out.printf(java.util.Locale.ROOT, "  %-14s %2d parca  %7d krk  %%%5.1f  %s%n",
+                            r.slot().outputName(), r.pieces(), Math.max(r.outputChars(), 0), r.percent(), r.state());
+                }
+                out.println("  yedek: " + ProjectStatus.backupAge(cfg, java.time.Clock.systemDefaultZone())
+                        .map(ProjectStatus::describeAge).orElse("yok"));
+                out.println("  git  : " + ProjectStatus.git(cfg.root()).orElse("depo degil"));
+                return 0;
             }
             case "backups": {
                 List<String> all = new Backup(cfg, out).list();
