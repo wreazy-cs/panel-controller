@@ -1,0 +1,58 @@
+.root {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+}
+
+.app {
+    -fx-background-color: #f4f5f7;
+}
+
+.path {
+    -fx-text-fill: #4a5568;
+}
+
+.card {
+    -fx-background-color: white;
+    -fx-border-color: #d9dde3;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 10 12 10 12;
+}
+
+.card-title {
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 11px;
+}
+
+.card-value {
+    -fx-text-fill: #1f2937;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.card-value.good {
+    -fx-text-fill: #2f7d4f;
+}
+
+.card-value.warn {
+    -fx-text-fill: #b45309;
+}
+
+.button.primary {
+    -fx-background-color: #2d65e3;
+    -fx-text-fill: white;
+    -fx-background-radius: 5;
+}
+
+.button.primary:hover {
+    -fx-background-color: #1e54cb;
+}
+
+.button.primary:disabled {
+    -fx-opacity: 0.5;
+}
+
+.log {
+    -fx-font-family: "Consolas", monospace;
+    -fx-font-size: 12px;
+}
