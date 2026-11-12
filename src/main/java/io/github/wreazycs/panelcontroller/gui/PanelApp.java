@@ -9,6 +9,9 @@ import io.github.wreazycs.panelcontroller.ProjectConfig;
 import io.github.wreazycs.panelcontroller.ProjectStatus;
 import io.github.wreazycs.panelcontroller.ProjectStatus.SlotRow;
 import io.github.wreazycs.panelcontroller.ProjectStatus.State;
+import io.github.wreazycs.panelcontroller.vault.KeySession;
+import io.github.wreazycs.panelcontroller.vault.KeyVault;
+import io.github.wreazycs.panelcontroller.vault.Protector;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -73,6 +76,11 @@ public final class PanelApp extends Application {
     private ProjectConfig cfg;
     private String lastCompare = "henüz bakılmadı";
 
+    private final KeySession session = new KeySession();
+    private VaultUi vaultUi;
+    private Scene mainScene;
+    private final Label keyLabel = new Label();
+
     private final Label rootLabel = new Label();
     private final Label configLabel = new Label();
     private final Label cardBackup = new Label("-");
@@ -95,6 +103,14 @@ public final class PanelApp extends Application {
         configFile = saved.isEmpty() ? null : safePath(saved, null);
         applyParameters(getParameters().getRaw());
 
+        // -Dpanelcontroller.vault=<file> moves the vault (used by tests); default is %LOCALAPPDATA%.
+        String vaultOverride = System.getProperty("panelcontroller.vault", "");
+        Path vaultFile = vaultOverride.isBlank() ? KeyVault.defaultLocation() : Path.of(vaultOverride);
+        KeyVault vault = Protector.forPlatform()
+                .map(p -> new KeyVault(vaultFile, p, KeyVault.DEFAULT_ITERATIONS))
+                .orElse(null);
+        vaultUi = new VaultUi(primary, vault, session, background, this::updateKeyLabel, this::log);
+
         BorderPane main = new BorderPane();
         main.getStyleClass().add("app");
         main.setPadding(new Insets(12));
@@ -112,17 +128,42 @@ public final class PanelApp extends Application {
         BorderPane.setMargin(split, new Insets(10, 0, 0, 0));
         main.setCenter(split);
 
-        Scene scene = new Scene(main, 1040, 720);
-        scene.getStylesheets().add(getClass().getResource("/panel-app.css").toExternalForm());
+        mainScene = new Scene(main, 1040, 720);
+        mainScene.getStylesheets().add(css());
         primary.setTitle("Panel Controller");
-        primary.setScene(scene);
+        if (vaultUi.hasStoredKey()) {
+            showLock();
+        } else {
+            showMain();
+        }
         primary.show();
+    }
 
+    private String css() {
+        return getClass().getResource("/panel-app.css").toExternalForm();
+    }
+
+    /** The app stays behind the lock screen until the PIN is entered. */
+    private void showLock() {
+        session.clear();
+        Scene lock = vaultUi.lockScene(this::showMain);
+        lock.getStylesheets().add(css());
+        stage.setScene(lock);
+    }
+
+    private void showMain() {
+        stage.setScene(mainScene);
+        updateKeyLabel();
         reload();
+    }
+
+    private void updateKeyLabel() {
+        keyLabel.setText(vaultUi.statusText());
     }
 
     @Override
     public void stop() {
+        session.clear();
         worker.shutdownNow();
         background.shutdownNow();
     }
@@ -165,9 +206,16 @@ public final class PanelApp extends Application {
             prefs.remove("config");
             reload();
         });
-        VBox paths = new VBox(2, rootLabel, configLabel);
+        keyLabel.getStyleClass().add("path");
+        VBox paths = new VBox(2, rootLabel, configLabel, keyLabel);
         HBox.setHgrow(paths, Priority.ALWAYS);
-        return new HBox(8, paths, chooseRoot, chooseConfig, clearConfig);
+        Button gear = vaultUi.settingsButton(this::showLock);
+        // long paths shorten with "…"; the buttons keep their full size
+        paths.setMinWidth(0);
+        for (Button b : List.of(chooseRoot, chooseConfig, clearConfig, gear)) {
+            b.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
+        }
+        return new HBox(8, paths, chooseRoot, chooseConfig, clearConfig, gear);
     }
 
     private HBox cards() {
@@ -439,6 +487,7 @@ public final class PanelApp extends Application {
             dlg.setTitle("Yedekten geri yükle");
             dlg.setHeaderText(row.slot().outputName() + " için yedek seç (en yenisi üstte)");
             dlg.setContentText("Yedek:");
+            dlg.getDialogPane().getButtonTypes().setAll(VaultUi.OK_BUTTON, VaultUi.CANCEL_BUTTON);
             Optional<String> pick = dlg.showAndWait();
             if (pick.isEmpty()) {
                 return;
@@ -467,7 +516,7 @@ public final class PanelApp extends Application {
     // ----------------------------------------------------------------- helpers
 
     private void info(String message) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK);
+        Alert a = new Alert(Alert.AlertType.INFORMATION, message, VaultUi.OK_BUTTON);
         a.setHeaderText(null);
         a.initOwner(stage);
         a.showAndWait();
@@ -475,7 +524,7 @@ public final class PanelApp extends Application {
 
     private boolean confirm(String header, List<String> lines) {
         ButtonType go = new ButtonType("Yine de kopyala", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-        Alert a = new Alert(Alert.AlertType.WARNING, String.join("\n", lines), go, ButtonType.CANCEL);
+        Alert a = new Alert(Alert.AlertType.WARNING, String.join("\n", lines), go, VaultUi.CANCEL_BUTTON);
         a.setHeaderText(header);
         a.initOwner(stage);
         return a.showAndWait().filter(b -> b == go).isPresent();

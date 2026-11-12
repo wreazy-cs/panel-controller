@@ -52,6 +52,33 @@
     -fx-opacity: 0.5;
 }
 
+.gear {
+    -fx-font-family: "Segoe UI Symbol";
+    -fx-font-size: 16px;
+    -fx-padding: 2 8 2 8;
+}
+
+.lock-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2937;
+}
+
+.lock-pin {
+    -fx-font-size: 20px;
+    -fx-max-width: 140px;
+    -fx-alignment: center;
+}
+
+.error-text {
+    -fx-text-fill: #b91c1c;
+}
+
+.hint {
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 11px;
+}
+
 .log {
     -fx-font-family: "Consolas", monospace;
     -fx-font-size: 12px;
