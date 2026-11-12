@@ -67,6 +67,29 @@ Directory names, the CDN URL and the slot list can be changed in a properties fi
 
 Typical flow: `check` → `backup` → paste into the panel → `compare`.
 
+## API key
+
+Entered from the ⚙ menu (top right of the window). It is never written to the screen, the log or
+the clipboard; only its last four characters are shown. There is no command line access to it.
+
+- **"Remember" unticked:** kept in memory only, gone when the app closes.
+- **"Remember" ticked:** you set a 4-digit PIN first. The key is stored in
+  `%LOCALAPPDATA%\PanelController\vault.bin` and the app asks for the PIN on every start.
+- **⚙ menu:** change PIN, remove PIN (deletes the stored key), lock now.
+- **Forgot the PIN:** "PIN'imi unuttum" on the lock screen deletes the stored key; enter it again.
+
+How it is protected:
+
+- AES-256-GCM, with the key derived from the PIN (PBKDF2-HMAC-SHA256, 600,000 rounds, random salt)
+- wrapped in Windows DPAPI: only your Windows account on this computer can open the file
+- file access list: owner only; location outside OneDrive and outside any git repository
+- 5 wrong PINs delete the stored key
+
+Limits, stated plainly: 4 digits are 10,000 combinations. Software already running as your Windows
+user can bypass the attempt counter and try them all. The PIN stops someone who sits down at the
+app; it does not stop malware on your account. Persistent storage is Windows only; elsewhere the
+key is kept for the session.
+
 ## Rules enforced by `build`
 
 JS sources are pure ASCII; no HTML entities; everything fits windows-1254; every piece starts with a
@@ -79,7 +102,8 @@ contains no comments (the files are publicly readable from the CDN).
 1. ~~Skeleton, license, documentation~~
 2. ~~Core library and command line: build, validate, backup, compare, restore, clipboard~~
 3. ~~Desktop interface (JavaFX)~~
-4. Read-only API experiments (needs a safe way to store the API key)
+4. ~~API key storage (PIN + DPAPI)~~
+5. Read-only API calls
 
 ## License
 

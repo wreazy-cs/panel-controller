@@ -28,7 +28,7 @@ public final class Cdn {
             .connectTimeout(Duration.ofSeconds(20))
             .build();
 
-    /** @param template URL with one %s for the file name, e.g. https://cdn.example/4426/tema/%s */
+    /** @param template URL with one %s for the file name, e.g. https://cdn.example.com/STORE_ID/tema/%s */
     public Cdn(String template) {
         if (template == null || !template.contains("%s")) {
             throw new IllegalArgumentException("'cdn' ayari yok ya da %s icermiyor (panel-controller.properties)");
