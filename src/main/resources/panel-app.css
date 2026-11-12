@@ -1,85 +1,429 @@
+/* Panel Controller theme. Colours are looked-up variables on .root; .root.dark swaps them. */
+
 .root {
-    -fx-font-family: "Segoe UI", sans-serif;
+    -pc-bg: #F3F5F8;
+    -pc-surface: #FFFFFF;
+    -pc-surface-alt: #F7F8FA;
+    -pc-border: #DCE1E8;
+    -pc-text: #1B2433;
+    -pc-muted: #5A6B85;
+    -pc-accent: #2D65E3;
+    -pc-accent-hover: #1E54CB;
+    -pc-accent-soft: #E4ECFB;
+    -pc-accent-text: #1A47A8;
+    -pc-ok: #1F6B38;
+    -pc-ok-soft: #E3F2E7;
+    -pc-warn: #7A5200;
+    -pc-warn-soft: #FFF1CC;
+    -pc-err: #9B1F1B;
+    -pc-err-soft: #FBE4E2;
+    -pc-sidebar: #FFFFFF;
+    -pc-code-bg: #F1F3F7;
+
+    -fx-base: #EEF1F5;
+    -fx-background: -pc-bg;
+    -fx-control-inner-background: #FFFFFF;
+    -fx-control-inner-background-alt: #FAFBFC;
+    -fx-accent: -pc-accent;
+    -fx-focus-color: -pc-accent;
+    -fx-faint-focus-color: #2D65E326;
+    -fx-font-family: "Segoe UI";
     -fx-font-size: 13px;
 }
 
-.app {
-    -fx-background-color: #f4f5f7;
+.root.dark {
+    -pc-bg: #14181F;
+    -pc-surface: #1C212A;
+    -pc-surface-alt: #232A35;
+    -pc-border: #303846;
+    -pc-text: #E6EAF0;
+    -pc-muted: #9AA6B8;
+    -pc-accent: #4F82F0;
+    -pc-accent-hover: #6A96F3;
+    -pc-accent-soft: #22325A;
+    -pc-accent-text: #A9C3FA;
+    -pc-ok: #7BD79A;
+    -pc-ok-soft: #1A3226;
+    -pc-warn: #F2C35B;
+    -pc-warn-soft: #3A2F14;
+    -pc-err: #FF8F86;
+    -pc-err-soft: #3E1F1E;
+    -pc-sidebar: #181C24;
+    -pc-code-bg: #171B22;
+
+    -fx-base: #29303B;
+    -fx-control-inner-background: #1C212A;
+    -fx-control-inner-background-alt: #20262F;
+    -fx-faint-focus-color: #4F82F033;
 }
 
-.path {
-    -fx-text-fill: #4a5568;
-}
+/* ------------------------------------------------------------- general */
+
+.label { -fx-text-fill: -pc-text; }
+.muted, .label.muted { -fx-text-fill: -pc-muted; }
+.small { -fx-font-size: 11px; }
+.mono { -fx-font-family: "Consolas", monospace; }
+.strong { -fx-font-weight: bold; }
+.hint { -fx-text-fill: -pc-muted; -fx-font-size: 11px; }
+.error-text { -fx-text-fill: -pc-err; }
+
+.scroll-pane, .scroll-pane > .viewport { -fx-background-color: transparent; }
+.scroll-pane { -fx-padding: 0; -fx-background-insets: 0; }
+
+.app-body { -fx-background-color: -pc-bg; }
+
+.page-title { -fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: -pc-text; }
+.page-subtitle { -fx-text-fill: -pc-muted; }
+.section-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: -pc-text; }
 
 .card {
-    -fx-background-color: white;
-    -fx-border-color: #d9dde3;
+    -fx-background-color: -pc-surface;
+    -fx-border-color: -pc-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 16;
+}
+
+.empty-state { -fx-padding: 32; -fx-alignment: center; }
+
+/* ------------------------------------------------------------- buttons */
+
+.button.btn, .menu-button.btn, .toggle-button.btn {
+    -fx-background-color: -pc-surface;
+    -fx-border-color: -pc-border;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
-    -fx-padding: 10 12 10 12;
+    -fx-padding: 7 14 7 14;
+    -fx-text-fill: -pc-text;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 8;
 }
+.button.btn:hover, .menu-button.btn:hover, .toggle-button.btn:hover { -fx-background-color: -pc-surface-alt; }
+.button.btn:focused, .menu-button.btn:focused { -fx-border-color: -pc-accent; }
+.button.btn .icon, .menu-button.btn .icon { -fx-stroke: -pc-text; }
+.menu-button.btn > .label { -fx-text-fill: -pc-text; -fx-padding: 0; }
+.menu-button.btn > .arrow-button { -fx-padding: 0 0 0 8; }
+.menu-button.btn > .arrow-button > .arrow { -fx-background-color: -pc-muted; }
 
-.card-title {
-    -fx-text-fill: #6b7280;
-    -fx-font-size: 11px;
-}
-
-.card-value {
-    -fx-text-fill: #1f2937;
-    -fx-font-size: 15px;
-    -fx-font-weight: bold;
-}
-
-.card-value.good {
-    -fx-text-fill: #2f7d4f;
-}
-
-.card-value.warn {
-    -fx-text-fill: #b45309;
-}
-
-.button.primary {
-    -fx-background-color: #2d65e3;
+.button.btn.primary {
+    -fx-background-color: -pc-accent;
+    -fx-border-color: -pc-accent;
     -fx-text-fill: white;
-    -fx-background-radius: 5;
-}
-
-.button.primary:hover {
-    -fx-background-color: #1e54cb;
-}
-
-.button.primary:disabled {
-    -fx-opacity: 0.5;
-}
-
-.gear {
-    -fx-font-family: "Segoe UI Symbol";
-    -fx-font-size: 16px;
-    -fx-padding: 2 8 2 8;
-}
-
-.lock-title {
-    -fx-font-size: 22px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1f2937;
+}
+.button.btn.primary:hover { -fx-background-color: -pc-accent-hover; -fx-border-color: -pc-accent-hover; }
+.button.btn.primary .icon { -fx-stroke: white; }
+
+.button.btn.ghost { -fx-background-color: transparent; -fx-border-color: transparent; }
+.button.btn.ghost:hover { -fx-background-color: -pc-surface-alt; }
+
+.button.btn.small { -fx-padding: 4 10 4 10; -fx-font-size: 12px; }
+.button.btn.icon-only { -fx-padding: 6; }
+
+.button.btn.danger { -fx-text-fill: -pc-err; }
+.button.btn.danger .icon { -fx-stroke: -pc-err; }
+
+.button.btn:disabled, .menu-button.btn:disabled { -fx-opacity: 0.45; }
+
+.toggle-button.btn:selected {
+    -fx-background-color: -pc-accent-soft;
+    -fx-border-color: -pc-accent;
+    -fx-text-fill: -pc-accent-text;
 }
 
-.lock-pin {
-    -fx-font-size: 20px;
-    -fx-max-width: 140px;
+.hyperlink { -fx-text-fill: -pc-accent; -fx-border-color: transparent; -fx-padding: 0; }
+.hyperlink:visited { -fx-text-fill: -pc-accent; }
+
+/* ------------------------------------------------------------- icons */
+
+.icon {
+    -fx-fill: transparent;
+    -fx-stroke: -pc-text;
+    -fx-stroke-width: 2;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
+}
+.icon.ok { -fx-stroke: -pc-ok; }
+.icon.warn { -fx-stroke: -pc-warn; }
+.icon.err { -fx-stroke: -pc-err; }
+.icon.info { -fx-stroke: -pc-accent; }
+.icon.muted { -fx-stroke: -pc-muted; }
+
+/* ------------------------------------------------------------- chips */
+
+.chip {
+    -fx-background-radius: 10;
+    -fx-padding: 2 8 2 8;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-background-color: -pc-surface-alt;
+    -fx-text-fill: -pc-muted;
+}
+.chip.ok { -fx-background-color: -pc-ok-soft; -fx-text-fill: -pc-ok; }
+.chip.warn { -fx-background-color: -pc-warn-soft; -fx-text-fill: -pc-warn; }
+.chip.err { -fx-background-color: -pc-err-soft; -fx-text-fill: -pc-err; }
+.chip.info { -fx-background-color: -pc-accent-soft; -fx-text-fill: -pc-accent-text; }
+.chip.link { -fx-cursor: hand; -fx-underline: false; }
+.chip.link:hover { -fx-underline: true; }
+
+/* ------------------------------------------------------------- shell */
+
+.sidebar {
+    -fx-background-color: -pc-sidebar;
+    -fx-border-color: transparent -pc-border transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 16 12 12 12;
+    -fx-spacing: 2;
+}
+.brand-name { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -pc-text; }
+.brand-version { -fx-font-size: 11px; -fx-text-fill: -pc-muted; }
+.nav-group { -fx-font-size: 11px; -fx-text-fill: -pc-muted; -fx-padding: 14 10 4 10; }
+
+.nav-item {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-border-color: transparent;
+    -fx-padding: 8 10 8 10;
+    -fx-text-fill: -pc-muted;
+    -fx-alignment: center-left;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 10;
+    -fx-max-width: infinity;
+}
+.nav-item .icon { -fx-stroke: -pc-muted; }
+.nav-item:hover { -fx-background-color: -pc-surface-alt; -fx-text-fill: -pc-text; }
+.nav-item:hover .icon { -fx-stroke: -pc-text; }
+.nav-item:selected {
+    -fx-background-color: -pc-accent-soft;
+    -fx-text-fill: -pc-accent-text;
+    -fx-font-weight: bold;
+}
+.nav-item:selected .icon { -fx-stroke: -pc-accent-text; }
+.nav-item .badge {
+    -fx-background-color: -pc-warn-soft;
+    -fx-text-fill: -pc-warn;
+    -fx-background-radius: 8;
+    -fx-padding: 0 6 0 6;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.page-header {
+    -fx-background-color: -pc-bg;
+    -fx-padding: 18 24 12 24;
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+}
+.project-chip {
+    -fx-background-color: -pc-surface;
+    -fx-border-color: -pc-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 5 10 5 10;
+    -fx-cursor: hand;
+}
+
+.statusbar {
+    -fx-background-color: -pc-surface;
+    -fx-border-color: -pc-border transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 5 16 5 16;
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+}
+.statusbar .label { -fx-font-size: 11px; -fx-text-fill: -pc-muted; }
+
+/* ------------------------------------------------------------- stat cards */
+
+.stat {
+    -fx-background-color: -pc-surface;
+    -fx-border-color: -pc-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 12 14 12 14;
+    -fx-spacing: 2;
+}
+.stat-title { -fx-font-size: 11px; -fx-text-fill: -pc-muted; -fx-font-weight: bold; }
+.stat-value { -fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: -pc-text; }
+.stat-sub { -fx-font-size: 11px; -fx-text-fill: -pc-muted; }
+.stat.ok { -fx-border-color: -pc-border -pc-border -pc-border -pc-ok; -fx-border-width: 1 1 1 3; }
+.stat.ok .stat-value { -fx-text-fill: -pc-ok; }
+.stat.warn { -fx-border-color: -pc-border -pc-border -pc-border -pc-warn; -fx-border-width: 1 1 1 3; }
+.stat.warn .stat-value { -fx-text-fill: -pc-warn; }
+.stat.err { -fx-border-color: -pc-border -pc-border -pc-border -pc-err; -fx-border-width: 1 1 1 3; }
+.stat.err .stat-value { -fx-text-fill: -pc-err; }
+.stat.info { -fx-border-color: -pc-border -pc-border -pc-border -pc-accent; -fx-border-width: 1 1 1 3; }
+.stat.info .stat-value { -fx-text-fill: -pc-accent-text; }
+
+/* ------------------------------------------------------------- stepper */
+
+.step { -fx-spacing: 10; -fx-alignment: center-left; }
+.step-dot {
+    -fx-min-width: 26; -fx-min-height: 26; -fx-max-width: 26; -fx-max-height: 26;
+    -fx-background-radius: 13;
+    -fx-border-radius: 13;
+    -fx-border-color: -pc-border;
+    -fx-background-color: -pc-surface;
     -fx-alignment: center;
 }
+.step-dot .label { -fx-font-weight: bold; -fx-text-fill: -pc-muted; -fx-font-size: 12px; }
+.step-dot.running { -fx-border-color: -pc-accent; -fx-background-color: -pc-accent-soft; }
+.step-dot.running .label { -fx-text-fill: -pc-accent-text; }
+.step-dot.ok { -fx-border-color: -pc-ok; -fx-background-color: -pc-ok-soft; }
+.step-dot.ok .icon { -fx-stroke: -pc-ok; }
+.step-dot.fail { -fx-border-color: -pc-err; -fx-background-color: -pc-err-soft; }
+.step-dot.fail .icon { -fx-stroke: -pc-err; }
+.step-name { -fx-font-weight: bold; }
+.step-line { -fx-background-color: -pc-border; -fx-min-height: 2; -fx-max-height: 2; -fx-min-width: 24; }
 
-.error-text {
-    -fx-text-fill: #b91c1c;
-}
+/* ------------------------------------------------------------- banners */
 
-.hint {
-    -fx-text-fill: #6b7280;
-    -fx-font-size: 11px;
+.banner {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 12 16 12 16;
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
 }
+.banner.warn { -fx-background-color: -pc-warn-soft; -fx-border-color: -pc-warn; }
+.banner.warn .label { -fx-text-fill: -pc-warn; }
+.banner.info { -fx-background-color: -pc-accent-soft; -fx-border-color: -pc-accent; }
+.banner.info .label { -fx-text-fill: -pc-accent-text; }
+.banner.ok { -fx-background-color: -pc-ok-soft; -fx-border-color: -pc-ok; }
+.banner.ok .label { -fx-text-fill: -pc-ok; }
 
-.log {
-    -fx-font-family: "Consolas", monospace;
-    -fx-font-size: 12px;
+.wizard {
+    -fx-background-color: -pc-surface;
+    -fx-border-color: -pc-accent;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 16 18 16 18;
+    -fx-spacing: 10;
 }
+.wizard-file { -fx-font-family: "Consolas", monospace; -fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: -pc-text; }
+
+/* ------------------------------------------------------------- tables, lists */
+
+.table-view, .list-view {
+    -fx-background-color: -pc-surface;
+    -fx-border-color: -pc-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 1;
+}
+.table-view .column-header-background { -fx-background-color: -pc-surface-alt; -fx-background-radius: 8 8 0 0; }
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -pc-border transparent;
+    -fx-size: 34;
+}
+.table-view .column-header .label { -fx-text-fill: -pc-muted; -fx-font-weight: bold; -fx-alignment: center-left; -fx-font-size: 12px; }
+.table-row-cell { -fx-background-color: -pc-surface; -fx-border-color: transparent transparent -pc-surface-alt transparent; -fx-cell-size: 38; }
+.table-row-cell:hover { -fx-background-color: -pc-surface-alt; }
+.table-row-cell:selected { -fx-background-color: -pc-accent-soft; }
+.table-row-cell .table-cell { -fx-text-fill: -pc-text; -fx-alignment: center-left; -fx-border-color: transparent; }
+.table-row-cell:empty { -fx-background-color: -pc-surface; -fx-border-color: transparent; }
+.table-view .placeholder .label { -fx-text-fill: -pc-muted; }
+
+.list-cell { -fx-background-color: -pc-surface; -fx-text-fill: -pc-text; -fx-padding: 8 10 8 10; }
+.list-cell:filled:hover { -fx-background-color: -pc-surface-alt; }
+.list-cell:filled:selected { -fx-background-color: -pc-accent-soft; }
+.list-cell:filled:selected .label { -fx-text-fill: -pc-accent-text; }
+
+.progress-bar { -fx-pref-height: 8; }
+.progress-bar > .bar { -fx-background-color: -pc-accent; -fx-background-radius: 4; -fx-background-insets: 0; -fx-padding: 3; }
+.progress-bar > .track { -fx-background-color: -pc-surface-alt; -fx-background-radius: 4; -fx-background-insets: 0; }
+.progress-bar.over > .bar { -fx-background-color: -pc-warn; }
+
+.text-field, .password-field, .text-area, .combo-box, .spinner {
+    -fx-background-radius: 6;
+}
+.text-area .content { -fx-background-color: -pc-code-bg; }
+.text-input { -fx-prompt-text-fill: -pc-muted; -fx-text-fill: -pc-text; }
+
+.check-box > .box {
+    -fx-background-color: -pc-surface;
+    -fx-border-color: -pc-muted;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+.check-box:selected > .box { -fx-background-color: -pc-accent; -fx-border-color: -pc-accent; }
+.check-box:selected > .box > .mark { -fx-background-color: white; }
+.check-box > .label { -fx-text-fill: -pc-text; }
+
+/* ------------------------------------------------------------- activity */
+
+.activity {
+    -fx-background-color: -pc-surface;
+    -fx-border-color: transparent transparent transparent -pc-border;
+    -fx-border-width: 0 0 0 1;
+}
+.activity-header { -fx-padding: 18 16 10 16; -fx-spacing: 8; -fx-alignment: center-left; }
+.activity-list { -fx-padding: 0 12 12 12; -fx-spacing: 10; }
+.activity-card {
+    -fx-background-color: -pc-surface-alt;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -pc-border;
+    -fx-padding: 10 12 10 12;
+    -fx-spacing: 6;
+}
+.activity-card.ok { -fx-border-color: -pc-border -pc-border -pc-border -pc-ok; -fx-border-width: 1 1 1 3; }
+.activity-card.err { -fx-border-color: -pc-border -pc-border -pc-border -pc-err; -fx-border-width: 1 1 1 3; }
+.activity-card.warn { -fx-border-color: -pc-border -pc-border -pc-border -pc-warn; -fx-border-width: 1 1 1 3; }
+.activity-card.running { -fx-border-color: -pc-border -pc-border -pc-border -pc-accent; -fx-border-width: 1 1 1 3; }
+.activity-title { -fx-font-weight: bold; }
+.activity-time { -fx-font-size: 11px; -fx-text-fill: -pc-muted; }
+.finding { -fx-spacing: 2; -fx-padding: 6 0 0 0; }
+.finding-fix { -fx-font-size: 11px; -fx-text-fill: -pc-muted; }
+.details .title { -fx-background-color: transparent; -fx-padding: 4 0 0 0; }
+.details .title .text { -fx-fill: -pc-muted; -fx-font-size: 11px; }
+.details > .content { -fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 4 0 0 0; }
+.raw-output { -fx-font-family: "Consolas", monospace; -fx-font-size: 11px; }
+
+/* ------------------------------------------------------------- tabs (guide) */
+
+.tab-pane.shell > .tab-header-area {
+    -fx-padding: 6 8 0 8;
+    -fx-background-color: -pc-sidebar;
+}
+.tab-pane.shell > .tab-header-area > .tab-header-background {
+    -fx-background-color: -pc-sidebar;
+    -fx-border-color: transparent transparent -pc-border transparent;
+}
+.tab-pane.shell > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6 6 0 0;
+    -fx-padding: 4 12 4 12;
+}
+.tab-pane.shell > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -pc-bg;
+    -fx-border-color: -pc-border -pc-border transparent -pc-border;
+    -fx-border-radius: 6 6 0 0;
+}
+.tab-pane.shell > .tab-header-area > .headers-region > .tab .tab-label { -fx-text-fill: -pc-muted; }
+.tab-pane.shell > .tab-header-area > .headers-region > .tab:selected .tab-label { -fx-text-fill: -pc-text; -fx-font-weight: bold; }
+.tab-pane.shell > .tab-header-area > .headers-region > .tab:selected .focus-indicator { -fx-border-color: transparent; }
+.tab-pane.shell > .tab-content-area { -fx-background-color: -pc-bg; }
+
+/* ------------------------------------------------------------- lock screen */
+
+.lock { -fx-background-color: -pc-bg; }
+.lock-title { -fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: -pc-text; }
+.lock-pin { -fx-font-size: 20px; -fx-max-width: 140px; -fx-alignment: center; }
+
+/* ------------------------------------------------------------- dialogs */
+
+.dialog-pane { -fx-background-color: -pc-surface; }
+.dialog-pane > .header-panel { -fx-background-color: -pc-surface-alt; }
+.dialog-pane > .header-panel .label { -fx-text-fill: -pc-text; -fx-font-weight: bold; }
+.dialog-pane > .content.label { -fx-text-fill: -pc-text; }
+.dialog-pane .button { -fx-background-radius: 6; }
+
+.tooltip { -fx-background-color: -pc-text; -fx-text-fill: -pc-surface; -fx-font-size: 12px; -fx-background-radius: 4; }
+
+.context-menu { -fx-background-color: -pc-surface; -fx-border-color: -pc-border; -fx-background-radius: 6; -fx-border-radius: 6; }
+.menu-item:focused { -fx-background-color: -pc-accent-soft; }
+.menu-item:focused > .label { -fx-text-fill: -pc-accent-text; }
+.menu-item > .label { -fx-text-fill: -pc-text; }

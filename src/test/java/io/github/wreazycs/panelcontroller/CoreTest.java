@@ -131,10 +131,67 @@ class CoreTest {
         PrintStream out = new PrintStream(buf, true, StandardCharsets.UTF_8);
         ProjectConfig cfg = ProjectConfig.load(dir, null);
 
-        assertEquals(0, new Builder(cfg, out).build(Builder.Mode.PANEL, List.of()), buf.toString());
+        Builder.Report built = new Builder(cfg, out).build(Builder.Mode.PANEL, List.of());
+        assertTrue(built.ok(), buf.toString());
+        assertEquals(2, built.outputs().size());
         assertEquals(".ic-a{color:red}\n", Files.readString(dir.resolve("cikti/genel.css")));
         assertEquals("var a = 1;\n", Files.readString(dir.resolve("cikti/genel.js")));
-        assertEquals(0, new PanelValidator(cfg, out).run(), buf.toString());
+        assertTrue(new PanelValidator(cfg, out).run().ok(), buf.toString());
+    }
+
+    @Test
+    void buildFailureCarriesItsCode(@TempDir Path dir) throws IOException {
+        Path js = Files.createDirectories(dir.resolve("kaynak/genel-js"));
+        Files.writeString(js.resolve("10-a.js"), "/*@vt 11 | T */\nvar a = 'ç';\n");
+        ProjectConfig cfg = ProjectConfig.load(dir, null);
+        Builder.Report r = new Builder(cfg, new PrintStream(new ByteArrayOutputStream())).build(Builder.Mode.PANEL, List.of());
+        assertFalse(r.ok());
+        assertEquals(Problem.JS_NON_ASCII, r.failure().problem());
+        assertTrue(r.failure().line().startsWith("PC-101"));
+    }
+
+    @Test
+    void validatorReportsEmptyOutputAndBadCss(@TempDir Path dir) throws IOException {
+        ProjectConfig cfg = ProjectConfig.load(dir, null);
+        PrintStream quiet = new PrintStream(new ByteArrayOutputStream());
+        assertEquals(Problem.OUTPUT_EMPTY, new PanelValidator(cfg, quiet).run().error().problem());
+
+        Files.createDirectories(dir.resolve("cikti"));
+        Files.writeString(dir.resolve("cikti/genel.css"), "a{color:red}\nb{x:y\n");
+        PanelValidator.Report r = new PanelValidator(cfg, quiet).run();
+        assertFalse(r.ok());
+        assertEquals(Problem.OUT_BRACES, r.allErrors().get(0).problem());
+    }
+
+    @Test
+    void pasteOrderPutsGeneralLast(@TempDir Path dir) throws IOException {
+        Files.createDirectories(dir.resolve("cikti"));
+        for (String f : List.of("genel.css", "genel.js", "sepet.js", "anasayfa.css", "urun.css")) {
+            Files.writeString(dir.resolve("cikti").resolve(f), "x");
+        }
+        ProjectConfig cfg = ProjectConfig.load(dir, null);
+        assertEquals(List.of("anasayfa.css", "sepet.js", "urun.css", "genel.css", "genel.js"),
+                Workflow.pasteOrder(cfg).stream().map(Slot::outputName).toList());
+    }
+
+    @Test
+    void prepareStopsWithoutCdn(@TempDir Path dir) throws IOException {
+        ProjectConfig cfg = ProjectConfig.load(dir, null);
+        Workflow.PrepareReport r = Workflow.prepare(cfg, new PrintStream(new ByteArrayOutputStream()));
+        assertFalse(r.ok());
+        assertEquals(Workflow.Step.BACKUP, r.failedAt());
+        assertEquals(Problem.CDN_NOT_SET, r.failure().problem());
+        assertTrue(r.build() == null && r.validation() == null, "later steps must not run");
+    }
+
+    @Test
+    void everyProblemHasAUniqueCode() {
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (Problem p : Problem.values()) {
+            assertTrue(p.code().matches("PC-\\d{3}"), p.code());
+            assertTrue(seen.add(p.code()), "duplicate " + p.code());
+            assertFalse(p.title().isBlank() || p.meaning().isBlank() || p.fix().isBlank(), p.code());
+        }
     }
 
     @Test
@@ -144,8 +201,9 @@ class CoreTest {
         Files.writeString(src.resolve("b.css"), "/*@vt 1 | B */\nb{x:y}\n");
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         ProjectConfig cfg = ProjectConfig.load(dir, null);
-        int rc = new Builder(cfg, new PrintStream(buf, true, StandardCharsets.UTF_8)).build(Builder.Mode.PANEL, List.of());
-        assertEquals(1, rc);
+        Builder.Report r = new Builder(cfg, new PrintStream(buf, true, StandardCharsets.UTF_8)).build(Builder.Mode.PANEL, List.of());
+        assertFalse(r.ok());
+        assertEquals(Problem.DUPLICATE_NUMBER, r.failure().problem());
         assertTrue(buf.toString().contains("iki kez var"));
         assertFalse(Files.exists(dir.resolve("cikti/genel.css")));
     }

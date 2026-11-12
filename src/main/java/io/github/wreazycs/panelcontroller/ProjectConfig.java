@@ -66,6 +66,11 @@ public final class ProjectConfig {
         return new ProjectConfig(root.toAbsolutePath().normalize(), p);
     }
 
+    /** Settings given directly (the desktop app keeps them per project instead of in a file). */
+    public static ProjectConfig of(Path root, Properties settings) {
+        return new ProjectConfig(root.toAbsolutePath().normalize(), settings);
+    }
+
     /** Format: {@code folder:file:Panel Name;folder:file:Panel Name} */
     static List<Slot> parseSlots(String text) {
         if (text == null || text.isBlank()) {

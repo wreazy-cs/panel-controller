@@ -6,13 +6,15 @@
 
     <groupId>io.github.wreazycs</groupId>
     <artifactId>panel-controller</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <!-- keep in step with AppInfo.VERSION -->
+    <version>0.5.0</version>
 
     <properties>
-        <maven.compiler.release>21</maven.compiler.release>
+        <!-- JavaFX 24+ ships jdk.jsobject (needed by the guide's WebView); it requires Java 23 or newer -->
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.11.4</junit.version>
-        <javafx.version>21.0.5</javafx.version>
+        <javafx.version>25.0.1</javafx.version>
         <jna.version>5.15.0</jna.version>
     </properties>
 
@@ -20,6 +22,12 @@
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <!-- WebView for the in-app user guide -->
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-web</artifactId>
             <version>${javafx.version}</version>
         </dependency>
         <dependency>
@@ -37,6 +45,8 @@
     </dependencies>
 
     <build>
+        <!-- fixed name, so the desktop shortcut keeps working across versions -->
+        <finalName>panel-controller</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -44,7 +54,7 @@
                 <version>3.5.2</version>
             </plugin>
             <plugin>
-                <!-- run-gui.cmd: JavaFX goes on the module path (lib/fx), everything else on the class path (lib/cp) -->
+                <!-- run-gui.cmd: JavaFX goes on the module path (lib/javafx), everything else on the class path (lib/cp) -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>3.8.1</version>
@@ -56,7 +66,7 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/lib/fx</outputDirectory>
+                            <outputDirectory>${project.build.directory}/lib/javafx</outputDirectory>
                             <includeScope>runtime</includeScope>
                             <includeGroupIds>org.openjfx</includeGroupIds>
                         </configuration>

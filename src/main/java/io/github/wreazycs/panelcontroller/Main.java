@@ -3,13 +3,15 @@ package io.github.wreazycs.panelcontroller;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
-/** Command line entry point. */
+/** Command line entry point. There is deliberately no command that touches the API key. */
 public final class Main {
     private Main() {}
 
@@ -18,21 +20,27 @@ public final class Main {
 
             Usage: panel-controller [--root <dir>] [--config <file>] <command> [args]
 
+              prepare              Backup + build + validate; stops at the first failure. Run before uploading.
               build [--readable|--commented] [slot...]
                                    Build source pieces into the panel files (default: output dir).
-              validate             Simulate the panel on the output files. Run before every upload.
-              check                build + validate in one step.
-              backup               Download the live files into the backup dir. Run before uploading.
+              validate             Simulate the panel on the output files.
+              check                build + validate.
+              backup               Download the live files into the backup dir.
               compare [--dir <d>]  Compare local output with the live CDN files.
+              order                Files to paste, in order (page slots first, general last).
               status               Slot sizes, whether output is current, backup age, git state.
               backups              List backups, newest first.
               copy <file>          Copy an output file (e.g. genel.css) to the clipboard.
               restore <stamp|latest> <file>
                                    Copy a backed-up file to the clipboard, to paste back into the panel.
+              tasks [all]          Tasks in tasks/ (done/cancelled hidden unless "all").
+              note <name>          Open a session note in veri/oturumlar/ with the start time.
+              version              Version and latest release notes.
               help                 This text.
 
             --root    project directory (default: current directory)
             --config  properties file (cdn URL, slots, directories); see panel-controller.properties.example
+            Error codes (PC-xxx) are explained in the user guide inside the desktop app.
             """;
 
     public static void main(String[] args) {
@@ -62,11 +70,17 @@ public final class Main {
             out.print(HELP);
             return rest.isEmpty() ? 2 : 0;
         }
-        ProjectConfig cfg = ProjectConfig.load(root, configFile);
         String cmd = rest.get(0);
         List<String> a = rest.subList(1, rest.size());
+        if (cmd.equals("version")) {
+            printVersion(out, a.contains("all") ? AppInfo.RELEASES.size() : 3);
+            return 0;
+        }
+        ProjectConfig cfg = ProjectConfig.load(root, configFile);
 
         switch (cmd) {
+            case "prepare":
+                return Workflow.prepare(cfg, out).ok() ? 0 : 1;
             case "build": {
                 Builder.Mode mode = Builder.Mode.PANEL;
                 List<String> filters = new ArrayList<>();
@@ -77,46 +91,55 @@ public final class Main {
                         default -> filters.add(s);
                     }
                 }
-                return new Builder(cfg, out).build(mode, filters);
+                return new Builder(cfg, out).build(mode, filters).ok() ? 0 : 1;
             }
             case "validate":
-                return new PanelValidator(cfg, out).run();
+                return new PanelValidator(cfg, out).run().ok() ? 0 : 1;
             case "check": {
-                int rc = new Builder(cfg, out).build(Builder.Mode.PANEL, List.of());
-                if (rc != 0) {
-                    return rc;
+                if (!new Builder(cfg, out).build(Builder.Mode.PANEL, List.of()).ok()) {
+                    return 1;
                 }
                 out.println();
-                return new PanelValidator(cfg, out).run();
+                return new PanelValidator(cfg, out).run().ok() ? 0 : 1;
             }
             case "backup":
-                return new Backup(cfg, out).run(new Cdn(cfg.cdnTemplate()));
+                return new Backup(cfg, out).run(cdn(cfg)).ok() ? 0 : 1;
             case "compare": {
                 Path dir = cfg.outputDir();
                 if (a.size() >= 2 && a.get(0).equals("--dir")) {
                     dir = root.resolve(a.get(1));
                 }
-                return new Comparer(cfg, out).run(new Cdn(cfg.cdnTemplate()), dir);
+                return new Comparer(cfg, out).run(cdn(cfg), dir).allSame() ? 0 : 1;
+            }
+            case "order": {
+                int no = 1;
+                for (Slot s : Workflow.pasteOrder(cfg)) {
+                    out.printf("%d) %-14s -> %s%n", no++, s.outputName(), s.panelName());
+                }
+                return 0;
             }
             case "status": {
                 for (ProjectStatus.SlotRow r : ProjectStatus.slotRows(cfg)) {
                     if (r.state() == ProjectStatus.State.EMPTY) {
                         continue;
                     }
-                    out.printf(java.util.Locale.ROOT, "  %-14s %2d parca  %7d krk  %%%5.1f  %s%n",
+                    out.printf(Locale.ROOT, "  %-14s %2d parca  %7d krk  %%%5.1f  %s%n",
                             r.slot().outputName(), r.pieces(), Math.max(r.outputChars(), 0), r.percent(), r.state());
                 }
-                out.println("  yedek: " + ProjectStatus.backupAge(cfg, java.time.Clock.systemDefaultZone())
+                out.println("  yedek: " + ProjectStatus.backupAge(cfg, Clock.systemDefaultZone())
                         .map(ProjectStatus::describeAge).orElse("yok"));
                 out.println("  git  : " + ProjectStatus.git(cfg.root()).orElse("depo degil"));
                 return 0;
             }
             case "backups": {
-                List<String> all = new Backup(cfg, out).list();
+                Backup b = Backup.quiet(cfg);
+                List<String> all = b.list();
                 if (all.isEmpty()) {
                     out.println("Yedek yok: " + cfg.rel(cfg.backupDir()));
                 }
-                all.forEach(out::println);
+                for (String s : all) {
+                    out.println(s + "   " + String.join(" ", b.files(s)));
+                }
                 return 0;
             }
             case "copy": {
@@ -133,7 +156,7 @@ public final class Main {
                 if (a.size() != 2) {
                     throw new IllegalArgumentException("kullanim: restore <damga|latest> <dosya>");
                 }
-                Optional<Path> file = new Backup(cfg, out).find(a.get(0), a.get(1));
+                Optional<Path> file = Backup.quiet(cfg).find(a.get(0), a.get(1));
                 if (file.isEmpty()) {
                     out.println("Yedek bulunamadi: " + a.get(0) + " / " + a.get(1) + "   ('backups' ile listele)");
                     return 1;
@@ -143,10 +166,52 @@ public final class Main {
                 out.println("Panelde ilgili slota yapistirip kaydet; sonra 'compare' ile dogrula.");
                 return 0;
             }
+            case "tasks": {
+                boolean all = a.contains("all");
+                int hidden = 0;
+                for (Tasks.Task t : Tasks.read(cfg.root())) {
+                    if (!all && !t.status().active()) {
+                        hidden++;
+                        continue;
+                    }
+                    out.printf("%-12s %s  %s%n", t.status().id, t.start() == null ? "" : t.start(), t.title());
+                }
+                if (hidden > 0) {
+                    out.println("(" + hidden + " bitmis/iptal gorev gizli; hepsi icin: tasks all)");
+                }
+                return 0;
+            }
+            case "note": {
+                if (a.size() != 1) {
+                    throw new IllegalArgumentException("kullanim: note <ad>   (ornek: note claude)");
+                }
+                SessionNotes.Opened o = SessionNotes.open(cfg.root(), a.get(0), LocalDateTime.now());
+                out.println((o.created() ? "Olusturuldu: " : "Zaten var, dokunulmadi: ") + cfg.rel(o.file()));
+                return 0;
+            }
             default:
                 out.println("Bilinmeyen komut: " + cmd);
                 out.print(HELP);
                 return 2;
+        }
+    }
+
+    private static Cdn cdn(ProjectConfig cfg) {
+        if (cfg.cdnTemplate() == null) {
+            throw new IllegalArgumentException(Problem.CDN_NOT_SET.code() + " " + Problem.CDN_NOT_SET.title()
+                    + " (--config dosyasinda cdn=...)");
+        }
+        return new Cdn(cfg.cdnTemplate());
+    }
+
+    static void printVersion(PrintStream out, int count) {
+        out.println(AppInfo.title() + "  -  " + AppInfo.credit());
+        for (AppInfo.Release r : AppInfo.RELEASES.stream().limit(count).toList()) {
+            out.println();
+            out.println("v" + r.version() + "  " + r.date() + "  " + r.title());
+            r.added().forEach(s -> out.println("  [Eklendi] " + s));
+            r.changed().forEach(s -> out.println("  [Degisti] " + s));
+            r.fixed().forEach(s -> out.println("  [Duzeltildi] " + s));
         }
     }
 

@@ -1,95 +1,74 @@
 package io.github.wreazycs.panelcontroller.gui;
 
-import io.github.wreazycs.panelcontroller.Backup;
-import io.github.wreazycs.panelcontroller.Builder;
-import io.github.wreazycs.panelcontroller.Cdn;
+import io.github.wreazycs.panelcontroller.AppInfo;
 import io.github.wreazycs.panelcontroller.Comparer;
-import io.github.wreazycs.panelcontroller.PanelValidator;
-import io.github.wreazycs.panelcontroller.ProjectConfig;
-import io.github.wreazycs.panelcontroller.ProjectStatus;
-import io.github.wreazycs.panelcontroller.ProjectStatus.SlotRow;
-import io.github.wreazycs.panelcontroller.ProjectStatus.State;
 import io.github.wreazycs.panelcontroller.vault.KeySession;
 import io.github.wreazycs.panelcontroller.vault.KeyVault;
 import io.github.wreazycs.panelcontroller.vault.Protector;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.function.Function;
-import java.util.function.IntConsumer;
 import java.util.prefs.Preferences;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
-import javafx.scene.control.SplitPane;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextArea;
-import javafx.scene.input.ClipboardContent;
+import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
+import javafx.util.Duration;
 
-/** Desktop front end: the same operations as the command line, with status cards and a slot table. */
+/** The desktop window: side menu, pages, activity panel, guide tab, lock screen. */
 public final class PanelApp extends Application {
 
-    /** A backup older than this triggers a warning before copying to the clipboard. */
-    private static final Duration BACKUP_FRESH = Duration.ofHours(1);
-
-    @FunctionalInterface
-    private interface Job {
-        int run(PrintStream out) throws Exception;
-    }
-
-    private final Preferences prefs = Preferences.userNodeForPackage(PanelApp.class);
-    private final ExecutorService worker = daemonPool("job");
-    private final ExecutorService background = Executors.newCachedThreadPool(r -> daemon(r, "status"));
+    /** -Dpanelcontroller.prefs=<name> keeps settings in a separate node (used by tests, so real settings stay untouched). */
+    private final Preferences prefs = System.getProperty("panelcontroller.prefs", "").isBlank()
+            ? Preferences.userNodeForPackage(PanelApp.class)
+            : Preferences.userRoot().node(System.getProperty("panelcontroller.prefs"));
+    private final KeySession session = new KeySession();
+    private final List<Page> pages = new ArrayList<>();
+    private final List<ToggleButton> navButtons = new ArrayList<>();
+    private final List<Image> icons = new ArrayList<>();
 
     private Stage stage;
-    private Path root;
-    private Path configFile;
-    private ProjectConfig cfg;
-    private String lastCompare = "henüz bakılmadı";
-
-    private final KeySession session = new KeySession();
+    private AppContext ctx;
     private VaultUi vaultUi;
+    private GuideTab guide;
     private Scene mainScene;
-    private final Label keyLabel = new Label();
+    private Page current;
+    private PublishPage publish;
+    private ToolsPage tools;
+    private String theme;
 
-    private final Label rootLabel = new Label();
-    private final Label configLabel = new Label();
-    private final Label cardBackup = new Label("-");
-    private final Label cardBuild = new Label("-");
-    private final Label cardGit = new Label("-");
-    private final Label cardLive = new Label("-");
-    private final TableView<SlotRow> table = new TableView<>();
-    private final TextArea log = new TextArea();
-    private final List<Button> actions = new ArrayList<>();
+    private final StackPane pageHost = new StackPane();
+    private final Label pageTitle = Ui.label("", "page-title");
+    private final Label pageSubtitle = Ui.label("", "page-subtitle");
+    private final Label projectName = Ui.label("");
+    private final Label publishBadge = Ui.label("", "badge");
+    private Node activityView;
 
     public static void main(String[] args) {
         launch(args);
@@ -98,488 +77,342 @@ public final class PanelApp extends Application {
     @Override
     public void start(Stage primary) {
         this.stage = primary;
-        root = safePath(prefs.get("root", System.getProperty("user.dir")), Path.of("."));
-        String saved = prefs.get("config", "");
-        configFile = saved.isEmpty() ? null : safePath(saved, null);
-        applyParameters(getParameters().getRaw());
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> ErrorLog.write("yakalanmamış hata (" + t.getName() + ")", e));
+        theme = prefs.get("theme", "light");
 
-        // -Dpanelcontroller.vault=<file> moves the vault (used by tests); default is %LOCALAPPDATA%.
+        Path root = startRoot();
         String vaultOverride = System.getProperty("panelcontroller.vault", "");
         Path vaultFile = vaultOverride.isBlank() ? KeyVault.defaultLocation() : Path.of(vaultOverride);
-        KeyVault vault = Protector.forPlatform()
-                .map(p -> new KeyVault(vaultFile, p, KeyVault.DEFAULT_ITERATIONS))
-                .orElse(null);
-        vaultUi = new VaultUi(primary, vault, session, background, this::updateKeyLabel, this::log);
+        KeyVault vault = Protector.forPlatform().map(p -> new KeyVault(vaultFile, p, KeyVault.DEFAULT_ITERATIONS)).orElse(null);
 
-        BorderPane main = new BorderPane();
-        main.getStyleClass().add("app");
-        main.setPadding(new Insets(12));
+        ctx = new AppContext(primary, getHostServices(), prefs, session, vault);
+        ctx.setProject(root);
+        ctx.activity = new ActivityFeed(code -> ctx.openGuide(code));
+        ctx.navigator = this::show;
+        vaultUi = new VaultUi(primary, vault, session, ctx.background, () -> ctx.refreshAll(), msg -> {
+            if (!msg.endsWith("…")) { // "Kaydediliyor…" style progress lines do not get a card
+                ctx.activity.note(msg.startsWith("✗") ? "err" : "ok", "API anahtarı", msg.replaceFirst("^[✓✗] ", ""));
+            }
+        });
 
-        VBox top = new VBox(10, projectBar(), cards(), buttons());
-        main.setTop(top);
+        loadIcons();
+        themeEveryWindow();
 
-        buildTable();
-        log.setEditable(false);
-        log.setWrapText(false);
-        log.getStyleClass().add("log");
-        SplitPane split = new SplitPane(table, log);
-        split.setOrientation(Orientation.VERTICAL);
-        split.setDividerPositions(0.45);
-        BorderPane.setMargin(split, new Insets(10, 0, 0, 0));
-        main.setCenter(split);
+        publish = new PublishPage(ctx);
+        tools = new ToolsPage(ctx);
+        pages.addAll(List.of(publish, new RestorePage(ctx), new GitPage(ctx), new TasksPage(ctx), tools,
+                new NotesPage(), new AboutPage(ctx),
+                new SettingsPage(ctx, vaultUi, this::changeProject, this::setTheme, () -> theme, this::showLock)));
 
-        installIcons();
-        mainScene = new Scene(main, 1040, 720);
-        mainScene.getStylesheets().add(css());
-        primary.setTitle("Panel Controller");
+        TabPane tabs = new TabPane();
+        tabs.getStyleClass().add("shell");
+        Tab work = new Tab(AppInfo.NAME, workspace());
+        work.setClosable(false);
+        work.setGraphic(Icons.of("panel", 14));
+        tabs.getTabs().add(work);
+        guide = new GuideTab(tabs);
+        guide.setDark(theme.equals("dark"));
+        ctx.guideOpener = guide::open;
+
+        mainScene = new Scene(tabs, 1320, 860);
+        style(mainScene);
+        mainScene.addEventFilter(KeyEvent.KEY_PRESSED, this::shortcut);
+        ctx.refreshers.add(this::refreshVisible);
+
+        primary.setTitle(AppInfo.NAME + " " + AppInfo.VERSION);
+        primary.setMinWidth(1080);
+        primary.setMinHeight(700);
+        primary.getIcons().setAll(icons);
         if (vaultUi.hasStoredKey()) {
             showLock();
         } else {
             showMain();
         }
         primary.show();
-    }
 
-    /** Logo on the main window and on every dialog opened later (title bar and taskbar). */
-    private void installIcons() {
-        List<javafx.scene.image.Image> icons = new ArrayList<>();
-        for (int size : new int[] {16, 24, 32, 48, 64, 128, 256}) {
-            var url = getClass().getResource("/icons/panel-controller-" + size + ".png");
-            if (url != null) {
-                icons.add(new javafx.scene.image.Image(url.toExternalForm()));
+        Timeline auto = new Timeline(new KeyFrame(Duration.seconds(30), e -> {
+            if (!ctx.busy.get() && stage.getScene() == mainScene) {
+                refreshVisible();
             }
-        }
-        stage.getIcons().setAll(icons);
-        javafx.stage.Window.getWindows().addListener((javafx.collections.ListChangeListener<javafx.stage.Window>) change -> {
-            while (change.next()) {
-                for (javafx.stage.Window w : change.getAddedSubList()) {
-                    if (w instanceof Stage s && s.getIcons().isEmpty()) {
-                        s.getIcons().setAll(icons);
-                    }
-                }
-            }
-        });
-    }
-
-    private String css() {
-        return getClass().getResource("/panel-app.css").toExternalForm();
-    }
-
-    /** The app stays behind the lock screen until the PIN is entered. */
-    private void showLock() {
-        session.clear();
-        Scene lock = vaultUi.lockScene(this::showMain);
-        lock.getStylesheets().add(css());
-        stage.setScene(lock);
-    }
-
-    private void showMain() {
-        stage.setScene(mainScene);
-        updateKeyLabel();
-        reload();
-    }
-
-    private void updateKeyLabel() {
-        keyLabel.setText(vaultUi.statusText());
+        }));
+        auto.setCycleCount(Timeline.INDEFINITE);
+        auto.play();
     }
 
     @Override
     public void stop() {
         session.clear();
-        worker.shutdownNow();
-        background.shutdownNow();
-    }
-
-    // ------------------------------------------------------------------ layout
-
-    private HBox projectBar() {
-        rootLabel.getStyleClass().add("path");
-        configLabel.getStyleClass().add("path");
-        Button chooseRoot = new Button("Klasör seç…");
-        chooseRoot.setOnAction(e -> {
-            DirectoryChooser dc = new DirectoryChooser();
-            dc.setTitle("Proje klasörü");
-            if (Files.isDirectory(root)) {
-                dc.setInitialDirectory(root.toFile());
-            }
-            File f = dc.showDialog(stage);
-            if (f != null) {
-                root = f.toPath();
-                prefs.put("root", root.toString());
-                reload();
-            }
-        });
-        Button chooseConfig = new Button("Ayar dosyası…");
-        chooseConfig.setOnAction(e -> {
-            FileChooser fc = new FileChooser();
-            fc.setTitle("Ayar dosyası (.properties)");
-            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Properties", "*.properties"));
-            File f = fc.showOpenDialog(stage);
-            if (f != null) {
-                configFile = f.toPath();
-                prefs.put("config", configFile.toString());
-                reload();
-            }
-        });
-        Button clearConfig = new Button("×");
-        clearConfig.setTooltip(new javafx.scene.control.Tooltip("Ayar dosyasını kaldır"));
-        clearConfig.setOnAction(e -> {
-            configFile = null;
-            prefs.remove("config");
-            reload();
-        });
-        keyLabel.getStyleClass().add("path");
-        VBox paths = new VBox(2, rootLabel, configLabel, keyLabel);
-        HBox.setHgrow(paths, Priority.ALWAYS);
-        Button gear = vaultUi.settingsButton(this::showLock);
-        // long paths shorten with "…"; the buttons keep their full size
-        paths.setMinWidth(0);
-        for (Button b : List.of(chooseRoot, chooseConfig, clearConfig, gear)) {
-            b.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
-        }
-        return new HBox(8, paths, chooseRoot, chooseConfig, clearConfig, gear);
-    }
-
-    private HBox cards() {
-        HBox box = new HBox(10,
-                card("Son yedek", cardBackup),
-                card("Derleme", cardBuild),
-                card("Canlıyla fark", cardLive),
-                card("Git", cardGit));
-        box.getChildren().forEach(c -> HBox.setHgrow(c, Priority.ALWAYS));
-        return box;
-    }
-
-    private static VBox card(String title, Label value) {
-        Label t = new Label(title);
-        t.getStyleClass().add("card-title");
-        value.getStyleClass().add("card-value");
-        value.setWrapText(true);
-        VBox v = new VBox(4, t, value);
-        v.getStyleClass().add("card");
-        v.setMaxWidth(Double.MAX_VALUE);
-        return v;
-    }
-
-    private FlowPane buttons() {
-        FlowPane pane = new FlowPane(8, 8);
-        pane.getChildren().addAll(
-                action("Derle", () -> job("Derle",
-                        out -> new Builder(cfg(), out).build(Builder.Mode.PANEL, List.of()), null)),
-                action("Doğrula", () -> job("Doğrula", out -> new PanelValidator(cfg(), out).run(), null)),
-                action("Derle + Doğrula", () -> job("Derle + Doğrula", out -> {
-                    ProjectConfig c = cfg();
-                    int rc = new Builder(c, out).build(Builder.Mode.PANEL, List.of());
-                    if (rc != 0) {
-                        return rc;
-                    }
-                    out.println();
-                    return new PanelValidator(c, out).run();
-                }, null)),
-                action("Yedek al", () -> job("Yedek al",
-                        out -> new Backup(cfg(), out).run(new Cdn(cfg().cdnTemplate())), null)),
-                action("Canlıyla karşılaştır", () -> {
-                    ProjectConfig c = cfg();
-                    job("Canlıyla karşılaştır",
-                            out -> new Comparer(c, out).run(new Cdn(c.cdnTemplate()), c.outputDir()),
-                            rc -> lastCompare = rc == 0 ? "canlıyla aynı" : rc == 1 ? "fark var" : "okunamadı");
-                }),
-                action("Panoya kopyala", this::copySelected),
-                action("Yedekten geri yükle…", this::restoreSelected));
-        Button refresh = new Button("Yenile");
-        refresh.setOnAction(e -> refresh());
-        Button clear = new Button("Günlüğü temizle");
-        clear.setOnAction(e -> log.clear());
-        pane.getChildren().addAll(refresh, clear);
-        return pane;
-    }
-
-    private Button action(String text, Runnable run) {
-        Button b = new Button(text);
-        b.getStyleClass().add("primary");
-        b.setOnAction(e -> {
-            if (cfg == null) {
-                info("Önce geçerli bir proje klasörü seç.");
-                return;
-            }
-            run.run();
-        });
-        actions.add(b);
-        return b;
-    }
-
-    private void buildTable() {
-        table.getColumns().add(column("Dosya", 130, r -> r.slot().outputName()));
-        table.getColumns().add(column("Panel slotu", 170, r -> r.slot().panelName()));
-        table.getColumns().add(column("Parça", 70, r -> String.valueOf(r.pieces())));
-        table.getColumns().add(column("Karakter", 100, r -> r.outputChars() < 0 ? "-" : String.valueOf(r.outputChars())));
-        table.getColumns().add(column("Hedef %", 90, r -> r.outputChars() < 0 ? "-" : String.format("%.1f", r.percent())));
-        table.getColumns().add(column("Durum", 330, PanelApp::stateText));
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        table.setPlaceholder(new Label("Proje klasöründe slot bulunamadı."));
-    }
-
-    private static TableColumn<SlotRow, String> column(String title, double width, Function<SlotRow, String> f) {
-        TableColumn<SlotRow, String> c = new TableColumn<>(title);
-        c.setPrefWidth(width);
-        c.setSortable(false);
-        c.setCellValueFactory(cell -> new ReadOnlyStringWrapper(f.apply(cell.getValue())));
-        return c;
-    }
-
-    static String stateText(SlotRow r) {
-        return switch (r.state()) {
-            case EMPTY -> "boş slot";
-            case NO_OUTPUT -> "! henüz derlenmedi";
-            case STALE -> "! kaynak çıktıdan yeni, yeniden derle";
-            case OVER -> "! slot hedefini aşıyor";
-            case OK -> "hazır";
-        };
-    }
-
-    // ------------------------------------------------------------------- state
-
-    private ProjectConfig cfg() {
-        return cfg;
-    }
-
-    private void reload() {
-        rootLabel.setText("Proje: " + root);
-        configLabel.setText("Ayar : " + (configFile == null ? "(yok, varsayılanlar)" : configFile));
-        try {
-            cfg = ProjectConfig.load(root, configFile);
-        } catch (IOException | RuntimeException e) {
-            cfg = null;
-            table.getItems().clear();
-            log("Ayarlar okunamadı: " + e.getMessage());
-        }
-        lastCompare = "henüz bakılmadı";
-        refresh();
-    }
-
-    private void refresh() {
-        if (cfg == null) {
-            cardBackup.setText("-");
-            cardBuild.setText("-");
-            cardGit.setText("-");
-            cardLive.setText("-");
-            return;
-        }
-        ProjectConfig c = cfg;
-        try {
-            List<SlotRow> rows = ProjectStatus.slotRows(c);
-            table.getItems().setAll(rows);
-            long stale = rows.stream().filter(r -> r.state() == State.STALE || r.state() == State.NO_OUTPUT).count();
-            long over = rows.stream().filter(r -> r.state() == State.OVER).count();
-            boolean noSources = rows.stream().allMatch(r -> r.state() == State.EMPTY);
-            cardBuild.setText(noSources ? "bu klasörde kaynak yok, 'Klasör seç'"
-                    : stale > 0 ? stale + " dosya güncel değil, derle"
-                    : over > 0 ? over + " dosya slot hedefini aşıyor" : "güncel");
-            cardBuild.getStyleClass().removeAll("warn", "good");
-            cardBuild.getStyleClass().add(noSources || stale > 0 || over > 0 ? "warn" : "good");
-
-            Optional<Duration> age = ProjectStatus.backupAge(c, Clock.systemDefaultZone());
-            cardBackup.setText(age.map(ProjectStatus::describeAge).orElse("hiç yedek yok"));
-            cardBackup.getStyleClass().removeAll("warn", "good");
-            cardBackup.getStyleClass().add(age.isPresent() && age.get().compareTo(BACKUP_FRESH) <= 0 ? "good" : "warn");
-        } catch (IOException e) {
-            log("Durum okunamadı: " + e.getMessage());
-        }
-        cardLive.setText(lastCompare);
-        cardGit.setText("bakılıyor…");
-        background.submit(() -> {
-            String text = ProjectStatus.git(c.root()).orElse("git deposu değil");
-            Platform.runLater(() -> cardGit.setText(text));
-        });
-    }
-
-    // -------------------------------------------------------------------- jobs
-
-    private void job(String title, Job job, IntConsumer onDone) {
-        setBusy(true);
-        log("\n▶ " + title);
-        PrintStream out = new PrintStream(new LogStream(), true, StandardCharsets.UTF_8);
-        worker.submit(() -> {
-            int rc;
-            try {
-                rc = job.run(out);
-            } catch (Exception e) {
-                out.println("HATA: " + e.getMessage());
-                rc = 2;
-            }
-            out.flush();
-            int code = rc;
-            Platform.runLater(() -> {
-                if (onDone != null) {
-                    onDone.accept(code);
-                }
-                log(code == 0 ? "✓ bitti" : "✗ bitti, çıkış kodu " + code);
-                setBusy(false);
-                refresh();
-            });
-        });
-    }
-
-    private void setBusy(boolean busy) {
-        actions.forEach(b -> b.setDisable(busy));
-    }
-
-    private void log(String line) {
-        log.appendText(line + "\n");
-    }
-
-    /** Collects what the core classes print and appends it to the log area. */
-    private final class LogStream extends OutputStream {
-        private final ByteArrayOutputStream buf = new ByteArrayOutputStream();
-
-        @Override
-        public synchronized void write(int b) {
-            buf.write(b);
-        }
-
-        @Override
-        public synchronized void write(byte[] b, int off, int len) {
-            buf.write(b, off, len);
-        }
-
-        @Override
-        public synchronized void flush() {
-            if (buf.size() == 0) {
-                return;
-            }
-            String text = buf.toString(StandardCharsets.UTF_8);
-            buf.reset();
-            Platform.runLater(() -> log.appendText(text));
+        if (tools != null) tools.shutdown();
+        if (ctx != null) {
+            ctx.worker.shutdownNow();
+            ctx.background.shutdownNow();
         }
     }
 
-    // ----------------------------------------------------------- clipboard flow
-
-    private void copySelected() {
-        SlotRow row = table.getSelectionModel().getSelectedItem();
-        if (row == null) {
-            info("Önce tablodan kopyalanacak dosyayı seç.");
-            return;
-        }
-        Path file = cfg.outputDir().resolve(row.slot().outputName());
-        if (!Files.isRegularFile(file)) {
-            info(row.slot().outputName() + " henüz yok. Önce 'Derle'.");
-            return;
-        }
-        List<String> warnings = new ArrayList<>();
-        if (row.state() == State.STALE) {
-            warnings.add("Kaynak dosyalar çıktıdan yeni; 'Derle' çalıştırılmamış.");
-        }
-        if (row.state() == State.OVER) {
-            warnings.add("Dosya slot hedefini aşıyor.");
-        }
-        try {
-            Optional<Duration> age = ProjectStatus.backupAge(cfg, Clock.systemDefaultZone());
-            if (age.isEmpty()) {
-                warnings.add("Hiç yedek alınmamış. Yüklemeden önce 'Yedek al'.");
-            } else if (age.get().compareTo(BACKUP_FRESH) > 0) {
-                warnings.add("Son yedek " + ProjectStatus.describeAge(age.get()) + " alınmış.");
-            }
-        } catch (IOException e) {
-            warnings.add("Yedek durumu okunamadı: " + e.getMessage());
-        }
-        if (!warnings.isEmpty() && !confirm(row.slot().outputName() + " panoya kopyalanacak", warnings)) {
-            return;
-        }
-        toClipboard(file, row.slot().outputName());
-    }
-
-    private void restoreSelected() {
-        SlotRow row = table.getSelectionModel().getSelectedItem();
-        if (row == null) {
-            info("Önce tablodan geri yüklenecek dosyayı seç.");
-            return;
-        }
-        try {
-            Backup backups = Backup.quiet(cfg);
-            List<String> stamps = new ArrayList<>();
-            for (String s : backups.list()) {
-                if (backups.find(s, row.slot().outputName()).isPresent()) {
-                    stamps.add(s);
-                }
-            }
-            if (stamps.isEmpty()) {
-                info("Bu dosya için yedek yok: " + row.slot().outputName());
-                return;
-            }
-            ChoiceDialog<String> dlg = new ChoiceDialog<>(stamps.get(0), stamps);
-            dlg.setTitle("Yedekten geri yükle");
-            dlg.setHeaderText(row.slot().outputName() + " için yedek seç (en yenisi üstte)");
-            dlg.setContentText("Yedek:");
-            dlg.getDialogPane().getButtonTypes().setAll(VaultUi.OK_BUTTON, VaultUi.CANCEL_BUTTON);
-            Optional<String> pick = dlg.showAndWait();
-            if (pick.isEmpty()) {
-                return;
-            }
-            Path file = backups.find(pick.get(), row.slot().outputName())
-                    .orElseThrow(() -> new IOException("yedek bulunamadı"));
-            toClipboard(file, pick.get() + " / " + row.slot().outputName());
-            log("Panelde ilgili slota yapıştırıp kaydet; sonra 'Canlıyla karşılaştır' ile doğrula.");
-        } catch (IOException e) {
-            info("Yedekler okunamadı: " + e.getMessage());
-        }
-    }
-
-    private void toClipboard(Path file, String label) {
-        try {
-            String text = Files.readString(file, StandardCharsets.UTF_8);
-            ClipboardContent content = new ClipboardContent();
-            content.putString(text);
-            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
-            log("✓ " + label + " panoya kopyalandı (" + text.length() + " karakter).");
-        } catch (IOException e) {
-            info("Dosya okunamadı: " + e.getMessage());
-        }
-    }
-
-    // ----------------------------------------------------------------- helpers
-
-    private void info(String message) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, message, VaultUi.OK_BUTTON);
-        a.setHeaderText(null);
-        a.initOwner(stage);
-        a.showAndWait();
-    }
-
-    private boolean confirm(String header, List<String> lines) {
-        ButtonType go = new ButtonType("Yine de kopyala", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-        Alert a = new Alert(Alert.AlertType.WARNING, String.join("\n", lines), go, VaultUi.CANCEL_BUTTON);
-        a.setHeaderText(header);
-        a.initOwner(stage);
-        return a.showAndWait().filter(b -> b == go).isPresent();
-    }
-
-    /** Command line overrides: {@code --root <dir>} and {@code --config <file>} (not remembered). */
-    private void applyParameters(List<String> args) {
+    private Path startRoot() {
+        Path root = Path.of(prefs.get("root", System.getProperty("user.dir")));
+        List<String> args = getParameters().getRaw();
         for (int i = 0; i + 1 < args.size(); i++) {
             if (args.get(i).equals("--root")) {
-                root = safePath(args.get(++i), root);
-            } else if (args.get(i).equals("--config")) {
-                configFile = safePath(args.get(++i), configFile);
+                root = Path.of(args.get(i + 1));
+            }
+        }
+        return root;
+    }
+
+    // ---------------------------------------------------------------- layout
+
+    private Node workspace() {
+        BorderPane inner = new BorderPane();
+        inner.setTop(header());
+        inner.setCenter(pageHost);
+        activityView = ctx.activity.view();
+        inner.setRight(activityView);
+        inner.getStyleClass().add("app-body");
+
+        BorderPane shell = new BorderPane();
+        shell.setLeft(sidebar());
+        shell.setCenter(inner);
+        shell.setBottom(statusBar());
+        return shell;
+    }
+
+    private Node sidebar() {
+        ImageView logo = new ImageView(icons.isEmpty() ? null : icons.get(3));
+        logo.setFitWidth(32);
+        logo.setFitHeight(32);
+        VBox name = new VBox(0, Ui.label(AppInfo.NAME, "brand-name"), Ui.label("v" + AppInfo.VERSION + " " + AppInfo.STAGE, "brand-version"));
+        HBox brand = new HBox(10, logo, name);
+        brand.setAlignment(Pos.CENTER_LEFT);
+        brand.setPadding(new Insets(0, 4, 12, 4));
+
+        VBox nav = new VBox(2);
+        ToggleGroup group = new ToggleGroup();
+        String[] groups = {"Çalışma", null, null, null, null, "Uygulama", null, null};
+        for (int i = 0; i < pages.size(); i++) {
+            Page p = pages.get(i);
+            if (groups[i] != null) {
+                nav.getChildren().add(Ui.label(groups[i].toUpperCase(java.util.Locale.ROOT), "nav-group"));
+            }
+            ToggleButton b = new ToggleButton(p.title());
+            b.getStyleClass().add("nav-item");
+            b.setToggleGroup(group);
+            b.setMaxWidth(Double.MAX_VALUE);
+            b.setGraphic(Icons.of(p.icon(), 18));
+            b.setTooltip(new Tooltip(p.subtitle() + "  (Ctrl+" + (i + 1) + ")"));
+            b.setOnAction(e -> show(p.id()));
+            navButtons.add(b);
+            nav.getChildren().add(b);
+        }
+        // the badge sits on the right of the "Yayın" item (find its place before re-parenting the button)
+        int publishIndex = nav.getChildren().indexOf(navButtons.get(0));
+        StackPane publishItem = new StackPane();
+        nav.getChildren().set(publishIndex, publishItem);
+        publishItem.getChildren().addAll(navButtons.get(0), publishBadge);
+        StackPane.setAlignment(publishBadge, Pos.CENTER_RIGHT);
+        StackPane.setMargin(publishBadge, new Insets(0, 10, 0, 0));
+        publishBadge.setMouseTransparent(true);
+        publishBadge.setVisible(false);
+
+        Button help = Ui.button("Kullanım kılavuzu", "guide");
+        help.setMaxWidth(Double.MAX_VALUE);
+        help.setAlignment(Pos.CENTER_LEFT);
+        help.setOnAction(e -> ctx.openGuide(""));
+        help.setTooltip(new Tooltip("F1"));
+        Button themeButton = Ui.button(theme.equals("dark") ? "Açık tema" : "Koyu tema", theme.equals("dark") ? "sun" : "moon", "ghost");
+        themeButton.setMaxWidth(Double.MAX_VALUE);
+        themeButton.setAlignment(Pos.CENTER_LEFT);
+        themeButton.setOnAction(e -> {
+            setTheme(theme.equals("dark") ? "light" : "dark");
+            themeButton.setText(theme.equals("dark") ? "Açık tema" : "Koyu tema");
+            themeButton.setGraphic(Icons.of(theme.equals("dark") ? "sun" : "moon", 16));
+        });
+
+        VBox bottom = new VBox(6, help, themeButton);
+        VBox side = new VBox(brand, nav);
+        VBox.setVgrow(nav, Priority.ALWAYS);
+        side.getChildren().add(bottom);
+        side.getStyleClass().add("sidebar");
+        side.setPrefWidth(232);
+        side.setMinWidth(232);
+        return side;
+    }
+
+    private Node header() {
+        VBox titles = new VBox(2, pageTitle, pageSubtitle);
+        HBox.setHgrow(titles, Priority.ALWAYS);
+        HBox chip = new HBox(8, Icons.of("folder", 16), projectName);
+        chip.setAlignment(Pos.CENTER_LEFT);
+        chip.getStyleClass().add("project-chip");
+        chip.setOnMouseClicked(e -> show("settings"));
+        Tooltip.install(chip, new Tooltip("Proje klasörü (değiştirmek için tıkla)"));
+        Button refresh = Ui.iconButton("refresh", "Yenile (F5)");
+        refresh.setOnAction(e -> refreshAndCompare());
+        ToggleButton activity = new ToggleButton("İşlemler");
+        activity.getStyleClass().add("btn");
+        activity.setGraphic(Icons.of("activity", 16));
+        activity.setSelected(true);
+        activity.setOnAction(e -> {
+            activityView.setVisible(activity.isSelected());
+            activityView.setManaged(activity.isSelected());
+        });
+        HBox h = new HBox(10, titles, chip, refresh, activity);
+        h.getStyleClass().add("page-header");
+        return h;
+    }
+
+    private Node statusBar() {
+        Label credit = Ui.label(AppInfo.title() + "  ·  " + AppInfo.credit());
+        ProgressIndicator spin = new ProgressIndicator();
+        spin.setPrefSize(14, 14);
+        spin.setMaxSize(14, 14);
+        Label busy = new Label();
+        busy.textProperty().bind(ctx.busyText);
+        HBox right = new HBox(6, spin, busy);
+        right.setAlignment(Pos.CENTER_RIGHT);
+        right.visibleProperty().bind(ctx.busy);
+        HBox bar = new HBox(12, credit, Ui.spacer(), right);
+        bar.getStyleClass().add("statusbar");
+        return bar;
+    }
+
+    // ---------------------------------------------------------------- navigation
+
+    private void show(String id) {
+        for (int i = 0; i < pages.size(); i++) {
+            Page p = pages.get(i);
+            if (p.id().equals(id)) {
+                current = p;
+                navButtons.get(i).setSelected(true);
+                pageTitle.setText(p.title());
+                pageSubtitle.setText(p.subtitle());
+                pageHost.getChildren().setAll(p.view());
+                refreshVisible();
+                return;
             }
         }
     }
 
-    private static Path safePath(String text, Path fallback) {
-        try {
-            return Path.of(text);
-        } catch (RuntimeException e) {
-            return fallback;
+    private void refreshVisible() {
+        projectName.setText(ctx.settings.root.getFileName() == null ? ctx.settings.root.toString()
+                : ctx.settings.root.getFileName().toString());
+        long diff = ctx.lastCompare == null ? 0 : ctx.lastCompare.count(Comparer.LiveState.DIFFERENT);
+        publishBadge.setText(String.valueOf(diff));
+        publishBadge.setVisible(diff > 0);
+        if (current != null) {
+            try {
+                current.refresh();
+            } catch (RuntimeException e) {
+                ErrorLog.write("sayfa yenileme: " + current.id(), e);
+            }
         }
     }
 
-    private static Thread daemon(Runnable r, String name) {
-        Thread t = new Thread(r, name);
-        t.setDaemon(true);
-        return t;
+    private void refreshAndCompare() {
+        refreshVisible();
+        publish.compareQuietly();
     }
 
-    private static ExecutorService daemonPool(String name) {
-        return Executors.newSingleThreadExecutor(r -> daemon(r, name));
+    private void shortcut(KeyEvent e) {
+        if (e.getCode() == KeyCode.F5) {
+            refreshAndCompare();
+            e.consume();
+        } else if (e.getCode() == KeyCode.F1) {
+            ctx.openGuide("");
+            e.consume();
+        } else if (e.isShortcutDown() && e.getCode().isDigitKey()) {
+            int n = e.getCode().getCode() - KeyCode.DIGIT1.getCode();
+            if (n >= 0 && n < pages.size()) {
+                show(pages.get(n).id());
+                e.consume();
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- project, theme, lock
+
+    private void changeProject(Path root) {
+        if (!Files.isDirectory(root.resolve("kaynak"))
+                && !Ui.confirm(stage, "Bu klasörde kaynak/ yok",
+                root + "\n\nSeçilen klasör bir Panel Controller projesine benzemiyor. Yine de seçilsin mi?", "Seç")) {
+            return;
+        }
+        ctx.setProject(root);
+        ctx.activity.note("ok", "Proje değişti", root.toString());
+        refreshVisible();
+        publish.compareQuietly();
+    }
+
+    private void setTheme(String name) {
+        theme = name;
+        prefs.put("theme", name);
+        for (Window w : Window.getWindows()) {
+            if (w.getScene() != null) {
+                applyTheme(w.getScene().getRoot());
+            }
+        }
+        if (stage.getScene() != null) {
+            applyTheme(stage.getScene().getRoot());
+        }
+        applyTheme(mainScene.getRoot());
+        guide.setDark(name.equals("dark"));
+    }
+
+    private void applyTheme(Parent root) {
+        root.getStyleClass().remove("dark");
+        if (theme.equals("dark")) {
+            root.getStyleClass().add("dark");
+        }
+    }
+
+    private void style(Scene scene) {
+        String css = PanelApp.class.getResource("/panel-app.css").toExternalForm();
+        if (!scene.getStylesheets().contains(css)) {
+            scene.getStylesheets().add(css);
+        }
+        applyTheme(scene.getRoot());
+    }
+
+    private void showLock() {
+        session.clear();
+        Scene lock = vaultUi.lockScene(this::showMain);
+        style(lock);
+        stage.setScene(lock);
+    }
+
+    private void showMain() {
+        stage.setScene(mainScene);
+        show(current == null ? "publish" : current.id());
+        publish.compareQuietly();
+    }
+
+    // ---------------------------------------------------------------- icons and dialogs
+
+    private void loadIcons() {
+        for (int size : new int[] {16, 24, 32, 48, 64, 128, 256}) {
+            var url = PanelApp.class.getResource("/icons/panel-controller-" + size + ".png");
+            if (url != null) {
+                icons.add(new Image(url.toExternalForm()));
+            }
+        }
+    }
+
+    /** Dialogs opened later get the logo, the stylesheet and the current theme. */
+    private void themeEveryWindow() {
+        Window.getWindows().addListener((ListChangeListener<Window>) change -> {
+            while (change.next()) {
+                for (Window w : change.getAddedSubList()) {
+                    if (w instanceof Stage s && s.getIcons().isEmpty()) {
+                        s.getIcons().setAll(icons);
+                    }
+                    if (w.getScene() != null) {
+                        style(w.getScene());
+                    }
+                    w.sceneProperty().addListener((o, a, b) -> {
+                        if (b != null) style(b);
+                    });
+                }
+            }
+        });
     }
 }

@@ -21,22 +21,18 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.PasswordField;
-import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextFormatter;
-import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
- * Everything the user sees about the API key: the lock screen at start-up, the settings menu
- * (top right), and the key / PIN dialogs. The key itself is never shown, logged or copied;
+ * Everything the user sees about the API key: the lock screen at start-up and the key / PIN
+ * dialogs (opened from the settings page). The key itself is never shown, logged or copied;
  * only its last four characters appear.
  *
  * <p>{@code vault} is null on platforms without an OS protector: the key can then be kept for
@@ -127,7 +123,7 @@ final class VaultUi {
                     });
                 } catch (VaultWipedException ex) {
                     Platform.runLater(() -> {
-                        info(ex.getMessage() + "\nUygulama kilitsiz açılıyor. Anahtarı ⚙ menüsünden yeniden girebilirsin.");
+                        info(ex.getMessage() + "\nUygulama kilitsiz açılıyor. Anahtarı Ayarlar sayfasından yeniden girebilirsin.");
                         onOpen.run();
                     });
                 } catch (VaultException ex) {
@@ -169,33 +165,6 @@ final class VaultUi {
         } else {
             Platform.exit();
         }
-    }
-
-    // -------------------------------------------------------- settings menu
-
-    /** The ⚙ button for the top-right corner. */
-    Button settingsButton(Runnable lockNow) {
-        Button gear = new Button("⚙");
-        gear.getStyleClass().add("gear");
-        gear.setTooltip(new Tooltip("Ayarlar"));
-
-        MenuItem key = new MenuItem("API anahtarı…");
-        key.setOnAction(e -> keyDialog());
-        MenuItem change = new MenuItem("PIN'i değiştir…");
-        change.setOnAction(e -> changePinDialog());
-        MenuItem remove = new MenuItem("PIN'i kaldır…");
-        remove.setOnAction(e -> removePinDialog());
-        MenuItem lock = new MenuItem("Şimdi kilitle");
-        lock.setOnAction(e -> lockNow.run());
-        ContextMenu menu = new ContextMenu(key, new SeparatorMenuItem(), change, remove, new SeparatorMenuItem(), lock);
-        menu.setOnShowing(e -> {
-            boolean stored = hasStoredKey();
-            change.setDisable(!stored);
-            remove.setDisable(!stored);
-            lock.setDisable(!stored);
-        });
-        gear.setOnAction(e -> menu.show(gear, javafx.geometry.Side.BOTTOM, 0, 4));
-        return gear;
     }
 
     // ------------------------------------------------------------ key dialog
@@ -331,7 +300,7 @@ final class VaultUi {
 
     // ------------------------------------------------------------ PIN dialogs
 
-    private void changePinDialog() {
+    void changePinDialog() {
         PasswordField current = pinField();
         PasswordField next = pinField();
         PasswordField repeat = pinField();
@@ -373,7 +342,7 @@ final class VaultUi {
         });
     }
 
-    private void removePinDialog() {
+    void removePinDialog() {
         Optional<char[]> pin = pinPrompt("PIN'i kaldır",
                 "PIN ve bu bilgisayardaki anahtar kaydı silinecek.\n"
                         + "Anahtar uygulama kapanana kadar bellekte kalır.\nOnaylamak için PIN'ini gir.");

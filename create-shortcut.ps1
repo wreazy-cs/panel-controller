@@ -3,19 +3,19 @@
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-if (-not (Test-Path (Join-Path $here 'target\panel-controller-0.1.0-SNAPSHOT.jar'))) {
+if (-not (Test-Path (Join-Path $here 'target\panel-controller.jar'))) {
     Write-Host 'target not found. Build first: mvn package'
     exit 1
 }
 $javaw = (Get-Command javaw.exe -ErrorAction SilentlyContinue).Source
 if (-not $javaw) {
-    Write-Host 'javaw.exe not found. Is Java 21 or newer installed?'
+    Write-Host 'javaw.exe not found. Is Java 25 or newer installed?'
     exit 1
 }
 
-$arguments = '--enable-native-access=javafx.graphics,ALL-UNNAMED ' +
-             '--module-path "target\lib\fx" --add-modules javafx.controls ' +
-             '-cp "target\panel-controller-0.1.0-SNAPSHOT.jar;target\lib\cp\*" ' +
+$arguments = '--enable-native-access=javafx.graphics,javafx.web,ALL-UNNAMED ' +
+             '--module-path "target\lib\javafx" --add-modules javafx.controls,javafx.web ' +
+             '-cp "target\panel-controller.jar;target\lib\cp\*" ' +
              'io.github.wreazycs.panelcontroller.gui.PanelApp'
 
 $desktop = [Environment]::GetFolderPath('Desktop')

@@ -26,12 +26,31 @@ public final class Comparer {
         this.out = out;
     }
 
+    public enum LiveState { SAME, DIFFERENT, LOCAL_MISSING, UNREADABLE }
+
+    public record FileResult(String name, LiveState state, int liveChars, int localChars,
+                             long added, long removed, List<String> diff) {}
+
+    public record Report(List<FileResult> files) {
+        public long count(LiveState s) {
+            return files.stream().filter(f -> f.state() == s).count();
+        }
+
+        /** True when every compared file is identical to the live one. */
+        public boolean allSame() {
+            return count(LiveState.DIFFERENT) == 0 && count(LiveState.UNREADABLE) == 0;
+        }
+
+        public Optional<FileResult> get(String name) {
+            return files.stream().filter(f -> f.name().equals(name)).findFirst();
+        }
+    }
+
     /** @param dir directory of the local files (normally the panel output directory) */
-    public int run(Cdn cdn, Path dir) throws IOException {
+    public Report run(Cdn cdn, Path dir) throws IOException {
         out.println("Karsilastirma: " + cfg.rel(dir) + "  <->  canli CDN");
         out.println("=".repeat(72));
-        int different = 0;
-        int unreadable = 0;
+        List<FileResult> results = new ArrayList<>();
         for (Slot slot : cfg.slots()) {
             Path file = dir.resolve(slot.outputName());
             String local = Files.isRegularFile(file)
@@ -42,41 +61,48 @@ public final class Comparer {
             }
             if (local == null) {
                 out.printf(Locale.ROOT, "  %-14s yerelde YOK, canlida %d karakter%n", slot.outputName(), live.get().length());
+                results.add(new FileResult(slot.outputName(), LiveState.LOCAL_MISSING, live.get().length(), 0, 0, 0, List.of()));
                 continue;
             }
             if (live.isEmpty()) {
                 out.printf("  %-14s CDN'den OKUNAMADI%n", slot.outputName());
-                different++;
-                unreadable++;
+                results.add(new FileResult(slot.outputName(), LiveState.UNREADABLE, 0, local.length(), 0, 0, List.of()));
                 continue;
             }
             if (local.equals(live.get())) {
                 out.printf(Locale.ROOT, "  %-14s AYNI   (%d karakter)%n", slot.outputName(), local.length());
+                results.add(new FileResult(slot.outputName(), LiveState.SAME, live.get().length(), local.length(), 0, 0, List.of()));
                 continue;
             }
-            different++;
             List<String> diff = diff(live.get().split("\n", -1), local.split("\n", -1));
             long added = diff.stream().filter(l -> l.startsWith("+")).count();
             long removed = diff.stream().filter(l -> l.startsWith("-")).count();
             out.printf(Locale.ROOT, "  %-14s FARKLI (canli %d / yerel %d karakter, +%d -%d satir)%n",
                     slot.outputName(), live.get().length(), local.length(), added, removed);
+            List<String> shown = new ArrayList<>();
             for (String l : diff.stream().limit(MAX_SHOWN).toList()) {
-                out.println("      " + (l.length() > 110 ? l.substring(0, 110) : l));
+                String cut = l.length() > 110 ? l.substring(0, 110) : l;
+                shown.add(cut);
+                out.println("      " + cut);
             }
             if (diff.size() > MAX_SHOWN) {
                 out.println("      ... (" + (diff.size() - MAX_SHOWN) + " satir daha)");
             }
+            results.add(new FileResult(slot.outputName(), LiveState.DIFFERENT, live.get().length(), local.length(),
+                    added, removed, shown));
         }
+        Report report = new Report(results);
         out.println("-".repeat(72));
-        if (different == 0) {
+        if (report.allSame()) {
             out.println("  Tum dosyalar canli ile ayni.");
-            return 0;
+        } else {
+            if (report.count(LiveState.UNREADABLE) > 0) {
+                out.println("  " + report.count(LiveState.UNREADABLE) + " dosya CDN'den okunamadi - internet/erisim sorunu olabilir.");
+            }
+            out.println("  " + (report.count(LiveState.DIFFERENT) + report.count(LiveState.UNREADABLE))
+                    + " dosya farkli. (Yeni yukledinse once onbellek: Ctrl+Shift+R / gizli sekme)");
         }
-        if (unreadable > 0) {
-            out.println("  " + unreadable + " dosya CDN'den okunamadi - internet/erisim sorunu olabilir.");
-        }
-        out.println("  " + different + " dosya farkli. (Yeni yukledinse once onbellek: Ctrl+Shift+R / gizli sekme)");
-        return 1;
+        return report;
     }
 
     /** Line diff: "-" lines only in {@code a} (live), "+" lines only in {@code b} (local), in order. */

@@ -2,6 +2,7 @@ package io.github.wreazycs.panelcontroller;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,11 +11,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -22,17 +21,12 @@ import java.util.stream.Stream;
 /**
  * Joins the small source pieces of each slot into the single file the panel accepts.
  *
- * <p>Rules enforced while building (a violation stops the build):
- * <ol>
- *   <li>JS sources are pure ASCII (non-ASCII is written as backslash-u escapes).</li>
- *   <li>No HTML entities anywhere (the panel decodes them and corrupts the file).</li>
- *   <li>Every character fits in windows-1254 (the panel stores single bytes).</li>
- *   <li>First line of every piece is a meta line: {@code /*@vt <no> | <title> | ezer: <what it overrides> *}{@code /}</li>
- *       with <no> unique across all slots.
- *   <li>A JS piece ends with ';' and has no multi-line strings or template literals.</li>
- *   <li>CSS compression re-parses its result and must equal the uncompressed rules.</li>
- *   <li>The panel copy contains no comments.</li>
- * </ol>
+ * <p>Rules enforced while building (a violation stops the build; codes in {@link Problem}):
+ * JS sources are pure ASCII (PC-101); no HTML entities (PC-102); everything fits windows-1254
+ * (PC-103); every piece starts with a meta line (PC-104) with a unique number (PC-105); a JS piece
+ * ends with ';' (PC-106) and has no multi-line strings or template literals (PC-107); CSS
+ * compression is re-parsed and must equal the uncompressed rules (PC-108); the panel copy
+ * contains no comments (PC-110); the total stays within the budget (PC-111).
  */
 public final class Builder {
 
@@ -51,6 +45,30 @@ public final class Builder {
         }
     }
 
+    /** One built output file. */
+    public record SlotOutput(Slot slot, int pieces, int chars, double percentOfTarget, boolean overTarget) {}
+
+    /** Result of a build. {@code error} is null when no rule stopped the build. */
+    public record Report(Mode mode, Path target, List<SlotOutput> outputs, int total, int budget,
+                         Finding error, List<Finding> warnings) {
+        public boolean budgetExceeded() {
+            return mode == Mode.PANEL && total > budget;
+        }
+
+        public boolean ok() {
+            return error == null && !budgetExceeded();
+        }
+
+        /** The finding that made the build fail, if any. */
+        public Finding failure() {
+            if (error != null) {
+                return error;
+            }
+            return budgetExceeded() ? Finding.of(Problem.BUDGET_EXCEEDED, "",
+                    total + " / " + budget + " karakter") : null;
+        }
+    }
+
     private static final Pattern META = Pattern.compile(
             "^/\\*@vt\\s+([^|]+?)\\s*\\|\\s*(.+?)\\s*(?:\\|\\s*ezer:\\s*(.+?)\\s*)?\\*/\\s*$");
     private static final Pattern ENTITY = Pattern.compile(
@@ -61,7 +79,7 @@ public final class Builder {
         final String file;
         final String no;
         final String title;
-        String body;
+        final String body;
         int startLine;
 
         Piece(String file, String no, String title, String body) {
@@ -80,14 +98,15 @@ public final class Builder {
         this.out = out;
     }
 
-    /** @return process exit code (0 = success) */
-    public int build(Mode mode, List<String> filters) throws IOException {
+    public Report build(Mode mode, List<String> filters) throws IOException {
         Path target = mode == Mode.PANEL ? cfg.outputDir() : cfg.generatedDir().resolve(mode.dirName);
         Files.createDirectories(target);
         out.printf("Panel Controller - build  [%s -> %s/]%n", mode.name(), cfg.rel(target));
         out.println("=".repeat(72));
 
         int total = 0;
+        List<SlotOutput> outputs = new ArrayList<>();
+        List<Finding> warnings = new ArrayList<>();
         Map<String, String> seen = new HashMap<>();
         try {
             for (Slot slot : cfg.slots()) {
@@ -95,7 +114,8 @@ public final class Builder {
                 for (Piece p : pieces) {
                     String prev = seen.putIfAbsent(p.no, p.file);
                     if (prev != null) {
-                        throw new BuildException("IC-VT-" + p.no + " iki kez var: " + prev + " ve " + p.file);
+                        throw new BuildException(Problem.DUPLICATE_NUMBER, p.file,
+                                "IC-VT-" + p.no + " iki kez var: " + prev + " ve " + p.file);
                     }
                 }
                 if (!filters.isEmpty() && filters.stream().noneMatch(slot.folder()::contains)) {
@@ -107,32 +127,37 @@ public final class Builder {
                     continue;
                 }
                 String text = mode == Mode.PANEL
-                        ? panelCopy(pieces, slot.isJs())
+                        ? panelCopy(pieces, slot.isJs(), slot.outputName())
                         : reviewCopy(slot, pieces);
                 Files.writeString(file, text, StandardCharsets.UTF_8);
                 total += text.length();
-                String warn = mode == Mode.PANEL && text.length() > cfg.slotTarget()
-                        ? "  !! " + cfg.slotTarget() + " HEDEFI ASIYOR" : "";
+                boolean over = mode == Mode.PANEL && text.length() > cfg.slotTarget();
+                double pct = 100.0 * text.length() / cfg.slotTarget();
+                outputs.add(new SlotOutput(slot, pieces.size(), text.length(), pct, over));
+                if (over) {
+                    warnings.add(Finding.of(Problem.SLOT_OVER_TARGET, slot.outputName(),
+                            text.length() + " karakter, hedef " + cfg.slotTarget()));
+                }
                 out.printf(Locale.ROOT, "  %-14s <- %2d parca   %7d karakter  %%%5.1f   (slot: %s)%s%n",
-                        slot.outputName(), pieces.size(), text.length(),
-                        100.0 * text.length() / cfg.slotTarget(), slot.panelName(), warn);
+                        slot.outputName(), pieces.size(), text.length(), pct, slot.panelName(),
+                        over ? "  !! " + cfg.slotTarget() + " HEDEFI ASIYOR" : "");
             }
         } catch (BuildException e) {
             out.println();
             out.println("DERLEME DURDU");
             out.println("  " + e.getMessage());
             out.println();
-            return 1;
+            return new Report(mode, target, outputs, total, cfg.budget(), e.finding(), warnings);
         }
 
         out.println("-".repeat(72));
         out.printf(Locale.ROOT, "  TOPLAM %d karakter  /  %d butce  (%%%.1f dolu)   [yuzdeler: slot hedefi %d]%n",
                 total, cfg.budget(), 100.0 * total / cfg.budget(), cfg.slotTarget());
-        if (mode == Mode.PANEL && total > cfg.budget()) {
+        Report report = new Report(mode, target, outputs, total, cfg.budget(), null, warnings);
+        if (report.budgetExceeded()) {
             out.println("  !! BUTCE ASILDI");
-            return 1;
         }
-        return 0;
+        return report;
     }
 
     // ------------------------------------------------------------ reading/checks
@@ -158,7 +183,7 @@ public final class Builder {
             String[] lines = raw.split("\n", -1);
             Matcher m = META.matcher(lines[0]);
             if (!m.matches()) {
-                throw new BuildException(rel + "  ilk satirda /*@vt ... */ meta satiri yok");
+                throw new BuildException(Problem.META_MISSING, rel, rel + "  ilk satirda /*@vt ... */ meta satiri yok");
             }
             String body = String.join("\n", List.of(lines).subList(1, lines.length));
             if (!keepComments) {
@@ -172,7 +197,7 @@ public final class Builder {
 
     /** Panel safety checks on one source file. */
     static void check(String path, String text, boolean js) throws BuildException {
-        CharsetEncoder cp1254 = java.nio.charset.Charset.forName("windows-1254").newEncoder();
+        CharsetEncoder cp1254 = Charset.forName("windows-1254").newEncoder();
         String[] lines = text.split("\n", -1);
         for (int no = 1; no <= lines.length; no++) {
             String line = lines[no - 1];
@@ -180,21 +205,24 @@ public final class Builder {
                 for (int col = 0; col < line.length(); col++) {
                     char ch = line.charAt(col);
                     if (ch > 127) {
-                        throw new BuildException(String.format("%s:%d:%d  JS kaynaginda ASCII disi karakter '%s' -> \\u%04x yaz",
-                                path, no, col + 1, ch, (int) ch));
+                        throw new BuildException(Problem.JS_NON_ASCII, path + ":" + no + ":" + (col + 1),
+                                String.format("%s:%d:%d  JS kaynaginda ASCII disi karakter '%s' -> \\u%04x yaz",
+                                        path, no, col + 1, ch, (int) ch));
                     }
                 }
             }
             Matcher m = ENTITY.matcher(line);
             if (m.find()) {
-                throw new BuildException(String.format("%s:%d  HTML entity bulundu: %s  (panel bunu cozup dosyayi bozar)",
-                        path, no, m.group()));
+                throw new BuildException(Problem.HTML_ENTITY, path + ":" + no,
+                        String.format("%s:%d  HTML entity bulundu: %s  (panel bunu cozup dosyayi bozar)", path, no, m.group()));
             }
             for (int col = 0; col < line.length(); ) {
                 int cp = line.codePointAt(col);
-                if (!cp1254.canEncode(new String(Character.toChars(cp)))) {
-                    throw new BuildException(String.format("%s:%d:%d  cp1254'te olmayan karakter '%s' (panel bunu '?' yapar)",
-                            path, no, col + 1, new String(Character.toChars(cp))));
+                String ch = new String(Character.toChars(cp));
+                if (!cp1254.canEncode(ch)) {
+                    throw new BuildException(Problem.NOT_CP1254, path + ":" + no + ":" + (col + 1),
+                            String.format("%s:%d:%d  cp1254'te olmayan karakter '%s' (panel bunu '?' yapar)",
+                                    path, no, col + 1, ch));
                 }
                 col += Character.charCount(cp);
             }
@@ -207,11 +235,13 @@ public final class Builder {
         String g = p.body;
         if (js) {
             if (!g.stripTrailing().endsWith(";")) {
-                throw new BuildException(p.file + "  JS parcasi ';' ile bitmiyor (parcalar bitisince bir sonrakiyle birlesip bozulabilir)");
+                throw new BuildException(Problem.JS_NO_SEMICOLON, p.file,
+                        p.file + "  JS parcasi ';' ile bitmiyor (parcalar bitisince bir sonrakiyle birlesip bozulabilir)");
             }
             String problem = Minifier.jsLineProblem(g);
             if (problem != null) {
-                throw new BuildException(p.file + "  " + problem + " - girinti silme guvenli degil");
+                throw new BuildException(Problem.JS_MULTILINE, p.file,
+                        p.file + "  " + problem + " - girinti silme guvenli degil");
             }
             return Minifier.js(g);
         }
@@ -219,15 +249,16 @@ public final class Builder {
         try {
             compact = Minifier.css(g);
             if (!Minifier.cssSummary(compact).equals(Minifier.cssSummary(g))) {
-                throw new BuildException(p.file + "  CSS sikistirma denetimi TUTMADI (kural farki)");
+                throw new BuildException(Problem.CSS_COMPRESS_MISMATCH, p.file,
+                        p.file + "  CSS sikistirma denetimi TUTMADI (kural farki)");
             }
         } catch (IllegalArgumentException e) {
-            throw new BuildException(p.file + "  CSS ayristirilamadi: " + e.getMessage());
+            throw new BuildException(Problem.CSS_PARSE, p.file, p.file + "  CSS ayristirilamadi: " + e.getMessage());
         }
         return compact;
     }
 
-    static String panelCopy(List<Piece> pieces, boolean js) throws BuildException {
+    static String panelCopy(List<Piece> pieces, boolean js, String outputName) throws BuildException {
         StringBuilder sb = new StringBuilder();
         for (Piece p : pieces) {
             sb.append(panelPiece(p, js)).append('\n');
@@ -235,7 +266,8 @@ public final class Builder {
         String body = sb.toString();
         String left = js ? CommentStripper.js(body) : CommentStripper.css(body);
         if (!left.equals(body)) {
-            throw new BuildException("panel kopyasinda yorum kaldi (" + (body.length() - left.length()) + " karakter)");
+            throw new BuildException(Problem.COMMENT_LEFT, outputName,
+                    "panel kopyasinda yorum kaldi (" + (body.length() - left.length()) + " karakter)");
         }
         return body;
     }
