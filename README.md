@@ -2,125 +2,108 @@
 
 # Panel Controller
 
-Checks and git for PlatinMarket store themes (unofficial, not affiliated). Made by Samet Şafak.
+Panel Controller is a Windows tool for stores that run on PlatinMarket. It checks the theme's CSS and
+JS files before they are pasted into the admin panel and keeps the project's changes in git. It is an
+independent project and is not affiliated with PlatinMarket.
 
-[Türkçe](#türkçe) · [Download](https://github.com/wreazy-cs/panel-controller/releases/latest)
+[Türkçe](#türkçe)
 
-PlatinMarket stores get custom CSS and JS only by pasting code into the admin panel. There is no
-backup, no history and no validation, and the panel can corrupt code on save. Panel Controller:
+## Why
 
-- backs up the live files
-- builds the small source pieces into the files the panel accepts
-- simulates what the panel does on save and stops at the first problem
-- compares local files with the live site and shows which file to paste, in which order
-- copies an earlier live version back to the clipboard
-- commits and pushes the project with git (refuses to push when build or validation is not clean)
+PlatinMarket only accepts custom CSS and JS as text pasted into the admin panel. The panel keeps no
+backup or history, and on save it can change characters in the code, which breaks the site without
+any warning. This tool takes the risky parts out of that routine.
 
-**Uploading stays manual.** The PlatinMarket API (Reform API) has no endpoint for the theme CSS and JS
-files, so the app cannot send a file to the panel. It copies the files to the clipboard in order.
+Before an upload it downloads a backup of the live files, joins the source pieces in `kaynak/` into the
+files the panel expects, and then checks those files the way the panel would treat them. If anything
+would break, it stops and tells you which file and why. It also compares your files with the ones on
+the live site, so you only paste what has actually changed, in the right order. When something goes
+wrong after an upload, you can copy an older live version from a backup and paste it back. Finally,
+the Git page commits and pushes the project, and it refuses to push while the build or the check
+reports a problem.
 
-> **Status: 0.7 beta.** Interface and user guide in Turkish and English (Settings → Language).
+The upload itself is still done by hand. PlatinMarket's API (the Reform API) has no endpoint for theme
+CSS and JS files, so there is no way for the app to send them to the panel. It copies each file to the
+clipboard instead and tells you where to paste it.
 
 ## Install
 
-Download `Panel Controller-<version>.exe` from
-[Releases](https://github.com/wreazy-cs/panel-controller/releases) and run it. It installs per user
-(no administrator rights), adds desktop and Start menu shortcuts and brings its own Java.
-Git, Node.js and Python are optional; Settings → System check shows what is missing.
+Download the latest `.exe` from the [Releases](https://github.com/wreazy-cs/panel-controller/releases/latest)
+page and run it. It installs for the current user, so you do not need administrator rights, and it
+comes with its own Java. Git, Node.js and Python are optional. Settings has a system check that shows
+which of them are installed and what each one is used for.
 
-First start: Settings → choose the project folder (the one that contains `kaynak/`), enter the store's
-CDN address (`https://platincdn.com/<store no>/tema/%s`), Save.
+On first start, open Settings, choose the project folder (the one that contains `kaynak/`), enter the
+store's CDN address in the form `https://platincdn.com/<store no>/tema/%s` and save. The interface and
+the user guide are available in Turkish and English; the language is also chosen in Settings and takes
+effect after a restart.
 
-## The window
+## Using it
 
-| Page | |
-|---|---|
-| Publish | Status cards, Prepare (backup + build + validate), file table in paste order, upload wizard |
-| Restore | Backups, newest first; copy a file back to the clipboard |
-| Git | Pick changed files, commit, push |
-| Settings | Project folder, CDN address, limits, language, theme, system check |
-| About | What the app does, release notes, licence |
+The app has five pages. Publish is where the daily work happens: it shows the state of the backup, the
+live site, the build and git, runs the checks and lists the files in the order they should be pasted.
+Restore lists the backups. Git lets you pick changed files, write a message, commit and push. Settings
+holds the project folder, the CDN address, the size limits, the language and the theme. About shows
+the version and the release notes.
 
-Results appear as cards in the Activity panel. Problems carry a code (`PC-101` ...); clicking it opens
-the user guide at that code. Shortcuts: `F5` refresh and compare, `F1` guide, `Ctrl+1` ... `Ctrl+5` pages.
+Every result appears as a card in the Activity panel on the right. Problems have a code such as
+`PC-112`; clicking the code opens the user guide at the explanation. `F5` refreshes and compares with
+the live site, `F1` opens the guide and `Ctrl+1` to `Ctrl+5` switch between the pages.
 
-## Build
+## Building from source
 
-Requirements: JDK 25 or newer, Maven.
+You need JDK 25 or newer and Maven.
 
 ```
 mvn package
-powershell -ExecutionPolicy Bypass -File create-shortcut.ps1      # developer shortcut, runs from target/
-powershell -ExecutionPolicy Bypass -File build-installer.ps1      # dist\Panel Controller-<version>.exe
+powershell -ExecutionPolicy Bypass -File create-shortcut.ps1
+powershell -ExecutionPolicy Bypass -File build-installer.ps1
 ```
 
-`build-installer.ps1` needs WiX Toolset 3.14 on the PATH (`-Type app-image` works without it).
-Do not run `mvn package` while the developer build is open: it replaces the jar under the running app.
+The first command builds the app into `target/`, the second puts a desktop shortcut to that build on
+your desktop, and the third builds the installer into `dist/`. The installer needs WiX Toolset 3.14 on
+the PATH; with `-Type app-image` it builds a runnable folder without WiX. Close the app before running
+`mvn package`, because the build replaces the jar the running app is using.
 
-Texts live in `src/main/resources/i18n/messages_tr.properties` and `messages_en.properties`, the guide in
-`guide/guide_tr.html` and `guide_en.html`, release notes in `release-notes_tr.txt` and `release-notes_en.txt`.
-`PanelApp.EXTRA_PAGES` turns the hidden pages (Tasks, Tools, API, API key) back on.
-
-## Project layout
-
-```
-<root>/kaynak/<slot>/*.css|*.js   source pieces (first line: /*@vt <no> | <title> | ezer: <what it overrides> */)
-<root>/cikti/                     files to paste into the panel
-<root>/veri/yedek/<stamp>/        backups of the live files
-```
+The interface texts are in `src/main/resources/i18n`, the user guide in `src/main/resources/guide` and
+the release notes in `release-notes_tr.txt` and `release-notes_en.txt`. Some earlier pages (tasks,
+tools, API) are hidden in this version; setting `PanelApp.EXTRA_PAGES` to `true` brings them back.
 
 ## Command line
 
+The same checks can be run without the window:
+
 ```
-java -jar target/panel-controller.jar --root <project dir> --config <file> <command>
+java -jar target/panel-controller.jar --root <project folder> --config <file> <command>
 ```
 
-| Command | What it does |
-|---|---|
-| `prepare` | Backup + build + validate; stops at the first failure, then prints the paste order |
-| `build [--readable\|--commented] [slot...]` | Builds the panel files |
-| `validate` | Panel simulation: HTML entities, windows-1254, budget, JS syntax, CSS balance, comments |
-| `check` | `build` + `validate` |
-| `backup` | Downloads the live files |
-| `compare [--dir d]` | Compares local files with the live CDN |
-| `order` | Files to paste, in order |
-| `status` | Slot sizes, output state, backup age, git state |
-| `backups` | Lists backups |
-| `copy <file>` | Copies an output file to the clipboard |
-| `restore <stamp\|latest> <file>` | Copies a backed-up file to the clipboard |
-| `version` | Version and release notes |
-
-The CDN address comes from a properties file (`--config`, see
-[panel-controller.properties.example](panel-controller.properties.example)).
-
----
+`prepare` does the whole routine (backup, build, check) and prints the paste order. `build`,
+`validate`, `check`, `backup` and `compare` run the steps one at a time. `order` prints the paste order,
+`status` shows file sizes and the state of the project, `backups` lists the backups, `copy <file>` and
+`restore <backup> <file>` put a file on the clipboard, and `version` prints the version. The CDN address
+is read from a properties file; see
+[panel-controller.properties.example](panel-controller.properties.example).
 
 ## Türkçe
 
-PlatinMarket mağaza temaları için kontrol ve git aracı (resmî değildir). Samet Şafak tarafından geliştirildi.
+Panel Controller, PlatinMarket altyapısını kullanan mağazalar için bir Windows aracıdır. Temanın CSS ve
+JS dosyalarını yönetim paneline yapıştırılmadan önce kontrol eder ve projedeki değişiklikleri git ile
+kaydeder. PlatinMarket ile resmî bir bağı yoktur.
 
-PlatinMarket'te özel CSS ve JS yalnızca yönetim paneline kod yapıştırarak eklenir. Yedek, geçmiş ve
-denetim yoktur; panel kaydederken kodu bozabilir. Panel Controller:
+Yüklemeden önce canlı dosyaların yedeğini alır, `kaynak/` klasöründeki parçaları panelin beklediği
+dosyalara birleştirir ve bu dosyaları panelin kayıt sırasında yapacağı değişikliklere göre denetler.
+Bir sorun varsa hangi dosyada ve neden olduğunu söyleyip durur. Yerel dosyaları canlı sitedekilerle de
+karşılaştırır; böylece yalnızca değişen dosyaları doğru sırayla yapıştırırsınız. Panele yükleme elle
+yapılır, çünkü PlatinMarket API'sinde (Reform API) tema CSS ve JS dosyaları için bir uç nokta yoktur.
 
-- canlı dosyaları yedekler
-- küçük kaynak parçalarını panelin kabul ettiği dosyalara derler
-- panelin kayıtta yaptığını taklit eder, ilk sorunda durur
-- yerel dosyaları canlıyla karşılaştırır, hangi dosyanın hangi sırayla yapıştırılacağını gösterir
-- eski bir canlı sürümü panoya geri kopyalar
-- projeyi git ile commit edip gönderir (derleme veya doğrulama temiz değilse göndermez)
-
-**Yükleme elle yapılır.** PlatinMarket API'sinde (Reform API) tema CSS ve JS dosyaları için uç nokta
-yoktur; uygulama panele dosya gönderemez, dosyaları sırayla panoya kopyalar.
-
-**Kurulum:** [Releases](https://github.com/wreazy-cs/panel-controller/releases) sayfasından
-`Panel Controller-<sürüm>.exe` dosyasını indirip çalıştırın. Yönetici izni ve Java gerekmez.
-İlk açılışta Ayarlar → proje klasörünü seçin (`kaynak/` klasörünü içeren), mağaza CDN adresini girin, Kaydedin.
-Dil Ayarlar'dan seçilir; uygulama yeniden başlatılınca uygulanır.
+Kurmak için [Releases](https://github.com/wreazy-cs/panel-controller/releases/latest) sayfasındaki
+`.exe` dosyasını indirip çalıştırın. Yönetici izni ve ayrıca Java gerekmez. İlk açılışta Ayarlar'dan
+proje klasörünü seçip mağazanın CDN adresini girin. Arayüz dili de Ayarlar'dan değiştirilir.
 
 ## License
 
-Apache License 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). Montserrat font: SIL Open Font
-License 1.1 ([OFL.txt](src/main/resources/fonts/OFL.txt)).
+Copyright 2026 Samet Şafak. Licensed under the Apache License 2.0; see [LICENSE](LICENSE) and
+[NOTICE](NOTICE). The bundled Montserrat font is licensed under the SIL Open Font License 1.1
+([OFL.txt](src/main/resources/fonts/OFL.txt)).
 
-"PlatinMarket" is a trademark of its respective owner. This project is independent and has no
-official connection to it.
+PlatinMarket is a trademark of its owner.
