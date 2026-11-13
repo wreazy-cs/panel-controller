@@ -1,4 +1,7 @@
 # Biçim: "## sürüm | tarih | başlık", sonra "+ eklendi", "* değişti", "! düzeltildi". En yeni üstte.
+## 0.9.0 | 2026-11-13 | CDN'i bulma, satır farkı
++ Kurulum ekranında mağazanın sitesini yazmak yeter; CDN adresini uygulama sayfadan bulur. Site kapalıysa (B2B) ya da adres bulunamazsa nedeni yazılır ve adres elle girilir.
++ Yayın tablosunda farklı dosyalar için satır farkı: canlıda olup yerelde olmayan satırlar kırmızı, yerelde olan satırlar yeşil.
 ## 0.8.0 | 2026-11-13 | Zorunlu kurulum
 + Kurulum ekranı: proje klasörü ve mağaza CDN adresi girilmeden Yayın, Geri dön ve Git açılmaz. CDN adresi ancak dosya okunabilirse kaydedilir.
 * İlk açılış penceresi kaldırıldı; yerini kurulum ekranı aldı.

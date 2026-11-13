@@ -41,6 +41,7 @@ import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
@@ -170,16 +171,25 @@ final class PublishPage implements Page {
             case OK -> Ui.chip(T.t("chip.ready"), "ok");
             default -> Ui.chip(T.t("chip.empty"), "");
         }));
-        table.getColumns().add(nodeCol(T.t("col.live"), 100, r -> {
+        table.getColumns().add(nodeCol(T.t("col.live"), 110, r -> {
             if (ctx.compareRunning) return Ui.chip(T.t("chip.checking"), "");
             if (r.live() == null) return Ui.chip(ctx.lastCompare == null ? T.t("chip.notChecked") : "-", "");
             return switch (r.live().state()) {
                 case SAME -> Ui.chip(T.t("chip.same"), "ok");
-                case DIFFERENT -> Ui.chip(T.t("chip.different"), "warn");
+                case DIFFERENT -> differentCell(r);
                 case UNREADABLE -> Ui.chip(T.t("chip.unreadable"), "err");
                 case LOCAL_MISSING -> Ui.chip(T.t("chip.localMissing"), "");
             };
         }));
+        table.setRowFactory(tv -> {
+            TableRow<Row> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && row.getItem() != null && hasDiff(row.getItem())) {
+                    DiffView.show(ctx, row.getItem().live());
+                }
+            });
+            return row;
+        });
         TableColumn<Row, Row> copy = nodeCol("", 52, r -> {
             if (r.status().outputChars() < 0) return new Region();
             Button b = Ui.iconButton("copy", T.t("copy.tip", r.slot().outputName()));
@@ -190,12 +200,35 @@ final class PublishPage implements Page {
         copy.setMinWidth(52);
         copy.setMaxWidth(52);
         table.getColumns().add(copy);
+        // columns that hold chips, bars and buttons never get narrower than their content; the slot name gives way
+        double[] mins = {30, 116, 76, 58, 100, 82, 94, 52};
+        for (int i = 0; i < mins.length && i < table.getColumns().size(); i++) {
+            table.getColumns().get(i).setMinWidth(mins[i]);
+        }
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         table.setPlaceholder(Ui.label(T.t("table.empty"), "muted"));
         table.setFixedCellSize(40);
         table.prefHeightProperty().bind(table.fixedCellSizeProperty().multiply(
                 javafx.beans.binding.Bindings.size(table.getItems()).add(1.4)));
         table.setMinHeight(140);
+    }
+
+    /** The "different" chip, followed by the button that opens the line difference. */
+    private Node differentCell(Row r) {
+        Label chip = Ui.chip(T.t("chip.different"), "warn");
+        if (!hasDiff(r)) {
+            return chip;
+        }
+        Button eye = Ui.iconButton("eye", T.t("diff.tip", r.slot().outputName()));
+        eye.setOnAction(e -> DiffView.show(ctx, r.live()));
+        HBox h = new HBox(4, chip, eye);
+        h.setAlignment(Pos.CENTER_LEFT);
+        return h;
+    }
+
+    /** The file differs from the live one and there is a line-by-line view of it. */
+    private static boolean hasDiff(Row r) {
+        return r.live() != null && r.live().state() == LiveState.DIFFERENT && !r.live().lines().isEmpty();
     }
 
     private static TableColumn<Row, String> textCol(String title, double width, Function<Row, String> f) {

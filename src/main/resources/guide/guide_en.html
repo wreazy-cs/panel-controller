@@ -133,11 +133,12 @@
     <ol class="steps">
       <li>Run <code>Panel Controller-&lt;version&gt;.exe</code>. No administrator rights and no Java needed.</li>
       <li>On first start the Setup screen opens. Use <i>Choose folder</i> to pick the folder that contains <code>kaynak/</code>.</li>
-      <li>Enter the store CDN address: <code>https://platincdn.com/&lt;store no&gt;/tema/%s</code>, then <i>Test and save</i>. The address is saved only if a file can be read from it.</li>
+      <li>Type the address of the store's website (for example <code>example.com</code>) and press <i>Find and save</i>. The app finds the CDN address in the page. The address is saved only if a file can be read from it.</li>
+      <li>If the site is closed to visitors (B2B) or no address is found, the app says why and opens <i>Enter it myself</i>. Type the CDN address as described below.</li>
       <li>Change the language and theme in Settings if you like.</li>
     </ol>
     <p>Both settings are required. Until they are done, Publish, Restore and Git show the Setup screen. Both can be changed later in Settings.</p>
-    <p>CDN address: the address containing <code>tema/genel.css</code> in the store page's source, with <code>%s</code> in place of the file name.</p>
+    <p>To find it by hand: open the store page's source (<kbd>Ctrl</kbd>+<kbd>U</kbd>), find the address containing <code>tema/genel.css</code> and put <code>%s</code> in place of the file name: <code>https://platincdn.com/&lt;store no&gt;/tema/%s</code>. For stores that need a login (B2B), open the page after logging in.</p>
   </section>
 
   <section id="sistem" data-group="Getting started">
@@ -212,7 +213,7 @@
       <tr><td><b>A</b> Status cards</td><td>Last backup, live difference, build, git. Colours: <a href="#kartlar" data-go="kartlar">Status cards</a>.</td></tr>
       <tr><td><b>B</b> Prepare</td><td>Prepare and the three-step indicator. <i>Single step</i>: back up only, build only, validate only, review copy.</td></tr>
       <tr><td><b>C</b> Notice / wizard</td><td>Shows files that differ from live; the wizard runs here.</td></tr>
-      <tr><td><b>D</b> Files</td><td>In paste order. State: <span class="chip ok">ready</span> <span class="chip warn">rebuild</span> <span class="chip warn">over target</span>. Live: <span class="chip ok">same</span> <span class="chip warn">different</span> <span class="chip err">unreadable</span>. The button at the end of a row copies the file.</td></tr>
+      <tr><td><b>D</b> Files</td><td>In paste order. State: <span class="chip ok">ready</span> <span class="chip warn">rebuild</span> <span class="chip warn">over target</span>. Live: <span class="chip ok">same</span> <span class="chip warn">different</span> <span class="chip err">unreadable</span>. On a different file, the eye button (or a double click on the row) opens the line difference: red lines are on the live site but not local (lost when pasted); green lines are local (added when pasted). The copy button at the end of a row copies the file.</td></tr>
       <tr><td><b>E</b> Activity</td><td>The result of every action. See <a href="#islemler" data-go="islemler">Activity cards</a>.</td></tr>
     </table>
   </section>

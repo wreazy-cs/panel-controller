@@ -133,11 +133,12 @@
     <ol class="steps">
       <li><code>Panel Controller-&lt;sürüm&gt;.exe</code> dosyasını çalıştır. Yönetici izni ve Java gerekmez.</li>
       <li>İlk açılışta Kurulum ekranı gelir. <i>Klasör seç</i> ile içinde <code>kaynak/</code> olan klasörü seç.</li>
-      <li>Mağaza CDN adresini gir: <code>https://platincdn.com/&lt;mağaza no&gt;/tema/%s</code>, sonra <i>Dene ve kaydet</i>. Adres ancak bir dosya okunabilirse kaydedilir.</li>
+      <li>Mağazanın sitesinin adresini yaz (örneğin <code>ornek.com.tr</code>) ve <i>Bul ve kaydet</i>'e bas. Uygulama CDN adresini sayfadan kendisi bulur. Adres ancak bir dosya okunabilirse kaydedilir.</li>
+      <li>Site ziyaretçilere kapalıysa (B2B) ya da adres bulunamazsa uygulama nedenini yazar ve <i>Adresi kendim gireceğim</i> bölümünü açar. CDN adresini aşağıdaki gibi elle gir.</li>
       <li>İstersen Ayarlar'dan dili ve temayı değiştir.</li>
     </ol>
     <p>Bu iki ayar zorunludur. Tamamlanmadan Yayın, Geri dön ve Git yerine Kurulum ekranı görünür. İkisi de sonradan Ayarlar'dan değiştirilebilir.</p>
-    <p>CDN adresi: sitenin sayfa kaynağında <code>tema/genel.css</code> geçen adres; dosya adının yerine <code>%s</code> yazılır.</p>
+    <p>Elle bulmak için: mağaza sayfasının kaynağını aç (<kbd>Ctrl</kbd>+<kbd>U</kbd>), <code>tema/genel.css</code> geçen adresi bul ve dosya adının yerine <code>%s</code> yaz: <code>https://platincdn.com/&lt;mağaza no&gt;/tema/%s</code>. Girişli (B2B) mağazalarda sayfayı giriş yaptıktan sonra aç.</p>
   </section>
 
   <section id="sistem" data-group="Başlarken">
@@ -212,7 +213,7 @@
       <tr><td><b>A</b> Durum kartları</td><td>Son yedek, canlıyla fark, derleme, git. Renkler: <a href="#kartlar" data-go="kartlar">Durum kartları</a>.</td></tr>
       <tr><td><b>B</b> Yayına hazırla</td><td>Hazırla ve üç adımın göstergesi. <i>Tek adım</i>: yalnız yedek, yalnız derle, yalnız doğrula, inceleme kopyası.</td></tr>
       <tr><td><b>C</b> Uyarı / sihirbaz</td><td>Canlıdan farklı dosya varsa burada yazar; sihirbaz da burada çalışır.</td></tr>
-      <tr><td><b>D</b> Dosyalar</td><td>Yapıştırma sırasıyla. Durum: <span class="chip ok">hazır</span> <span class="chip warn">derlenmeli</span> <span class="chip warn">hedef aşıldı</span>. Canlı: <span class="chip ok">aynı</span> <span class="chip warn">farklı</span> <span class="chip err">okunamadı</span>. Satır sonundaki düğme dosyayı panoya alır.</td></tr>
+      <tr><td><b>D</b> Dosyalar</td><td>Yapıştırma sırasıyla. Durum: <span class="chip ok">hazır</span> <span class="chip warn">derlenmeli</span> <span class="chip warn">hedef aşıldı</span>. Canlı: <span class="chip ok">aynı</span> <span class="chip warn">farklı</span> <span class="chip err">okunamadı</span>. Farklı bir dosyada göz düğmesi (ya da satıra çift tıklama) satır farkını açar: kırmızı satırlar canlıda var, yerelde yok (yapıştırınca silinir); yeşil satırlar yerelde var (yapıştırınca eklenir). Satır sonundaki kopyala düğmesi dosyayı panoya alır.</td></tr>
       <tr><td><b>E</b> İşlemler</td><td>Her işlemin sonucu. Bkz. <a href="#islemler" data-go="islemler">İşlem kartları</a>.</td></tr>
     </table>
   </section>

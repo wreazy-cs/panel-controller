@@ -95,6 +95,76 @@ class CoreTest {
         assertEquals(List.of("-b", "+x"), d);
     }
 
+    private static String[] lines(int n) {
+        String[] a = new String[n];
+        for (int i = 0; i < n; i++) a[i] = "line " + (i + 1);
+        return a;
+    }
+
+    private static List<Comparer.Line> view(String[] live, String[] local) {
+        return Comparer.hunks(live, local, Comparer.align(live, local), 3);
+    }
+
+    @Test
+    void diffViewKeepsContextAndNumbersLines() {
+        String[] live = lines(100);
+        String[] local = lines(100);
+        local[49] = "changed";
+        List<Comparer.Line> v = view(live, local);
+        // 46 lines left out, 3 before, - and +, 3 after, 47 left out
+        assertEquals(10, v.size());
+        assertEquals(new Comparer.Line('~', 0, 0, "46"), v.get(0));
+        assertEquals(new Comparer.Line(' ', 47, 47, "line 47"), v.get(1));
+        assertEquals(new Comparer.Line('-', 50, 0, "line 50"), v.get(4));
+        assertEquals(new Comparer.Line('+', 0, 50, "changed"), v.get(5));
+        assertEquals(new Comparer.Line(' ', 53, 53, "line 53"), v.get(8));
+        assertEquals(new Comparer.Line('~', 0, 0, "47"), v.get(9));
+    }
+
+    @Test
+    void diffViewNumbersFollowEachFileWhenLinesAreAdded() {
+        String[] live = lines(10);
+        String[] local = new String[12];
+        System.arraycopy(live, 0, local, 0, 5);
+        local[5] = "new a";
+        local[6] = "new b";
+        System.arraycopy(live, 5, local, 7, 5);
+        List<Comparer.Line> v = view(live, local);
+        assertEquals(List.of(
+                new Comparer.Line(' ', 3, 3, "line 3"), new Comparer.Line(' ', 4, 4, "line 4"), new Comparer.Line(' ', 5, 5, "line 5"),
+                new Comparer.Line('+', 0, 6, "new a"), new Comparer.Line('+', 0, 7, "new b"),
+                new Comparer.Line(' ', 6, 8, "line 6"), new Comparer.Line(' ', 7, 9, "line 7"), new Comparer.Line(' ', 8, 10, "line 8"),
+                new Comparer.Line('~', 0, 0, "2")), v.subList(1, v.size()));
+        assertEquals(new Comparer.Line('~', 0, 0, "2"), v.get(0));
+    }
+
+    @Test
+    void diffViewMergesNearbyChangesAndSkipsFarOnes() {
+        String[] live = lines(60);
+        String[] local = lines(60);
+        local[9] = "a";
+        local[13] = "b"; // 3 unchanged lines between: one block
+        local[40] = "c"; // far away: its own block
+        List<Comparer.Line> v = view(live, local);
+        long gaps = v.stream().filter(l -> l.kind() == '~').count();
+        assertEquals(3, gaps); // start, between the blocks, end
+        assertEquals(6, v.stream().filter(l -> l.kind() == '+' || l.kind() == '-').count());
+        assertTrue(v.stream().noneMatch(l -> l.kind() == '~' && l.text().equals("0")));
+    }
+
+    @Test
+    void diffViewAtTheStartAndEndOfAFile() {
+        String[] live = lines(20);
+        String[] local = lines(20);
+        local[0] = "first";
+        local[19] = "last";
+        List<Comparer.Line> v = view(live, local);
+        assertEquals('-', v.get(0).kind()); // no gap marker before a change on line 1
+        assertEquals('+', v.get(v.size() - 1).kind()); // nor after a change on the last line
+        assertEquals(1, v.stream().filter(l -> l.kind() == '~').count(), "only the middle is left out");
+        assertEquals(4, v.stream().filter(l -> l.kind() == '+' || l.kind() == '-').count());
+    }
+
     // ---- ProjectConfig / Backup
 
     @Test

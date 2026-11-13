@@ -428,3 +428,12 @@
 .menu-item:focused { -fx-background-color: -pc-accent-soft; }
 .menu-item:focused > .label { -fx-text-fill: -pc-accent-text; }
 .menu-item > .label { -fx-text-fill: -pc-text; }
+
+/* ------------------------------------------------------------- diff view */
+
+.diff-list { -fx-background-color: -pc-surface; -fx-border-color: -pc-border; -fx-border-radius: 6; -fx-background-radius: 6; }
+.diff-list .list-cell { -fx-padding: 1 8 1 4; -fx-background-color: -pc-surface; }
+.diff-list .list-cell:filled:hover { -fx-background-color: -pc-surface; }
+.diff-list .list-cell.diff-add { -fx-background-color: -pc-ok-soft; }
+.diff-list .list-cell.diff-del { -fx-background-color: -pc-err-soft; }
+.diff-list .list-cell.diff-gap { -fx-background-color: -pc-surface-alt; -fx-padding: 4 8 4 56; }
