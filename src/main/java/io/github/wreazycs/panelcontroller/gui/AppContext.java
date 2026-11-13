@@ -10,6 +10,7 @@ import io.github.wreazycs.panelcontroller.vault.KeyVault;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -89,6 +90,44 @@ final class AppContext {
 
     Optional<Cdn> cdn() {
         return cfg.cdnTemplate() == null ? Optional.empty() : Optional.of(new Cdn(cfg.cdnTemplate()));
+    }
+
+    /** The project folder has kaynak/ (required). */
+    boolean hasSources() {
+        return Files.isDirectory(cfg.sourceDir());
+    }
+
+    /** A CDN address in the right form is saved (required). */
+    boolean hasCdn() {
+        return validCdn(cfg.cdnTemplate());
+    }
+
+    /** Both required settings are in place; until then Publish, Restore and Git show the setup screen. */
+    boolean ready() {
+        return hasSources() && hasCdn();
+    }
+
+    static boolean validCdn(String address) {
+        return address != null && address.strip().startsWith("https://") && address.contains("%s");
+    }
+
+    /** Reads the first panel file from {@code address} in the background; the result arrives on the UI thread. */
+    void testCdn(String address, Consumer<Optional<String>> result) {
+        String file = cfg.slots().get(0).outputName();
+        background.submit(() -> {
+            Optional<String> r;
+            try {
+                r = new Cdn(address.strip()).fetch(file);
+            } catch (RuntimeException e) {
+                r = Optional.empty();
+            }
+            Optional<String> done = r;
+            Platform.runLater(() -> result.accept(done));
+        });
+    }
+
+    String firstFile() {
+        return cfg.slots().get(0).outputName();
     }
 
     /** True when a CDN address is set; otherwise explains it on a card and offers the settings page. */

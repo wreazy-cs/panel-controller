@@ -89,7 +89,7 @@
 <main id="main">
 <div class="wrap">
   <h1>Panel Controller</h1>
-  <p class="lead">Sürüm {{VERSION}} · {{AUTHOR}}. Soldaki kutuya bir kelime ya da hata kodu yaz. Uygulamada bir hata koduna tıklayınca bu sayfa o kodda açılır.</p>
+  <p class="lead">Sürüm {{VERSION}}. Soldaki kutuya bir kelime ya da hata kodu yaz. Uygulamada bir hata koduna tıklayınca bu sayfa o kodda açılır.</p>
 
   <section id="baslarken" data-group="Başlarken">
     <h2>Ne yapar</h2>
@@ -132,16 +132,17 @@
     <h2>Kurulum</h2>
     <ol class="steps">
       <li><code>Panel Controller-&lt;sürüm&gt;.exe</code> dosyasını çalıştır. Yönetici izni ve Java gerekmez.</li>
-      <li>Ayarlar → Proje → <i>Klasör seç</i>: içinde <code>kaynak/</code> olan klasörü seç.</li>
-      <li>Ayarlar → <i>Mağaza CDN adresi</i>: <code>https://platincdn.com/&lt;mağaza no&gt;/tema/%s</code>. <i>Bağlantıyı dene</i>, sonra <i>Kaydet</i>.</li>
+      <li>İlk açılışta Kurulum ekranı gelir. <i>Klasör seç</i> ile içinde <code>kaynak/</code> olan klasörü seç.</li>
+      <li>Mağaza CDN adresini gir: <code>https://platincdn.com/&lt;mağaza no&gt;/tema/%s</code>, sonra <i>Dene ve kaydet</i>. Adres ancak bir dosya okunabilirse kaydedilir.</li>
       <li>İstersen Ayarlar'dan dili ve temayı değiştir.</li>
     </ol>
+    <p>Bu iki ayar zorunludur. Tamamlanmadan Yayın, Geri dön ve Git yerine Kurulum ekranı görünür. İkisi de sonradan Ayarlar'dan değiştirilebilir.</p>
     <p>CDN adresi: sitenin sayfa kaynağında <code>tema/genel.css</code> geçen adres; dosya adının yerine <code>%s</code> yazılır.</p>
   </section>
 
   <section id="sistem" data-group="Başlarken">
     <h2>Sistem kontrolü</h2>
-    <p>Ayarlar → <i>Sistem kontrolü</i> ve ilk açılış penceresi. Java uygulamanın içindedir; diğerleri isteğe bağlıdır.</p>
+    <p>Ayarlar → <i>Sistem kontrolü</i>. Java uygulamanın içindedir; diğerleri isteğe bağlıdır.</p>
     <table>
       <tr><th>Araç</th><th>Olmazsa</th></tr>
       <tr><td>Git</td><td>Git sayfası çalışmaz.</td></tr>

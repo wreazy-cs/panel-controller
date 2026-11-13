@@ -1,14 +1,10 @@
 package io.github.wreazycs.panelcontroller.gui;
 
-import io.github.wreazycs.panelcontroller.Cdn;
-import io.github.wreazycs.panelcontroller.Slot;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -188,7 +184,7 @@ final class SettingsPage implements Page {
 
     private void save() {
         String c = cdn.getText().strip();
-        if (!c.isEmpty() && (!c.startsWith("https://") || !c.contains("%s"))) {
+        if (!c.isEmpty() && !AppContext.validCdn(c)) {
             cdnResult.setText(T.t("settings.cdn.invalid"));
             cdnResult.getStyleClass().setAll("label", "error-text", "small");
             return;
@@ -213,25 +209,22 @@ final class SettingsPage implements Page {
 
     private void testCdn() {
         String c = cdn.getText().strip();
-        if (!c.startsWith("https://") || !c.contains("%s")) {
+        if (!AppContext.validCdn(c)) {
             cdnResult.setText(T.t("settings.cdn.invalid"));
             cdnResult.getStyleClass().setAll("label", "error-text", "small");
             return;
         }
-        Slot first = ctx.cfg.slots().get(0);
-        cdnResult.setText(T.t("settings.cdn.testing", first.outputName()));
+        String file = ctx.firstFile();
+        cdnResult.setText(T.t("settings.cdn.testing", file));
         cdnResult.getStyleClass().setAll("label", "muted", "small");
-        ctx.background.submit(() -> {
-            Optional<String> r = new Cdn(c).fetch(first.outputName());
-            Platform.runLater(() -> {
-                if (r.isPresent()) {
-                    cdnResult.setText(T.t("settings.cdn.ok", first.outputName(), Ui.number(r.get().length())));
-                    cdnResult.getStyleClass().setAll("label", "small");
-                } else {
-                    cdnResult.setText(T.t("settings.cdn.fail"));
-                    cdnResult.getStyleClass().setAll("label", "error-text", "small");
-                }
-            });
+        ctx.testCdn(c, r -> {
+            if (r.isPresent()) {
+                cdnResult.setText(T.t("settings.cdn.ok", file, Ui.number(r.get().length())));
+                cdnResult.getStyleClass().setAll("label", "small");
+            } else {
+                cdnResult.setText(T.t("settings.cdn.fail"));
+                cdnResult.getStyleClass().setAll("label", "error-text", "small");
+            }
         });
     }
 }

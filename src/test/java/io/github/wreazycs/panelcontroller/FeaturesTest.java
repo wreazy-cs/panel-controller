@@ -178,6 +178,6 @@ class FeaturesTest {
             assertEquals(AppInfo.releases("tr").size(), r.size(), "same releases in both languages");
             assertFalse(r.get(0).added().isEmpty());
         }
-        assertEquals("Samet Şafak", AppInfo.AUTHOR);
+        assertEquals("wreazy-cs", AppInfo.AUTHOR);
     }
 }

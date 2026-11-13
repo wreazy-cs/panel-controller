@@ -12,10 +12,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.prefs.Preferences;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.application.ColorScheme;
 import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
@@ -24,9 +26,6 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Tab;
@@ -46,6 +45,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.stage.Window;
+import javafx.stage.WindowEvent;
 import javafx.util.Duration;
 
 /** The desktop window: side menu, pages, activity panel, guide tab. */
@@ -56,6 +56,9 @@ public final class PanelApp extends Application {
      * shown: the PlatinMarket API has no theme endpoints, so for now the app checks and commits only.
      */
     static final boolean EXTRA_PAGES = false;
+
+    /** Pages that need the project folder and the CDN address; until then they show the setup screen. */
+    private static final Set<String> NEEDS_SETUP = Set.of("publish", "restore", "git");
 
     /** -Dpanelcontroller.prefs=<name> keeps settings in a separate node (used by tests). */
     private final Preferences prefs = System.getProperty("panelcontroller.prefs", "").isBlank()
@@ -74,6 +77,7 @@ public final class PanelApp extends Application {
     private Page current;
     private PublishPage publish;
     private ToolsPage tools;
+    private SetupView setup;
     private String theme;
 
     private final StackPane pageHost = new StackPane();
@@ -121,6 +125,7 @@ public final class PanelApp extends Application {
         }
         pages.add(new SettingsPage(ctx, vaultUi, EXTRA_PAGES, this::changeProject, this::setTheme, () -> theme, this::showLock));
         pages.add(new AboutPage(ctx));
+        setup = new SetupView(ctx, this::changeProject, this::refreshAndCompare);
 
         TabPane tabs = new TabPane();
         tabs.getStyleClass().add("shell");
@@ -147,6 +152,7 @@ public final class PanelApp extends Application {
             showMain();
         }
         primary.show();
+        TitleBar.apply(theme.equals("dark"));
 
         Timeline auto = new Timeline(new KeyFrame(Duration.seconds(30), e -> {
             if (!ctx.busy.get() && stage.getScene() == mainScene) {
@@ -293,7 +299,7 @@ public final class PanelApp extends Application {
     }
 
     private Node statusBar() {
-        Label credit = Ui.label(AppInfo.title() + "  ·  " + T.t("status.credit", AppInfo.AUTHOR));
+        Label credit = Ui.label(AppInfo.title());
         ProgressIndicator spin = new ProgressIndicator();
         spin.setPrefSize(14, 14);
         spin.setMaxSize(14, 14);
@@ -315,9 +321,6 @@ public final class PanelApp extends Application {
             if (p.id().equals(id)) {
                 current = p;
                 navButtons.get(i).setSelected(true);
-                pageTitle.setText(p.title());
-                pageSubtitle.setText(p.subtitle());
-                pageHost.getChildren().setAll(p.view());
                 refreshVisible();
                 return;
             }
@@ -330,12 +333,24 @@ public final class PanelApp extends Application {
         long diff = ctx.lastCompare == null ? 0 : ctx.lastCompare.count(Comparer.LiveState.DIFFERENT);
         publishBadge.setText(String.valueOf(diff));
         publishBadge.setVisible(diff > 0);
-        if (current != null) {
-            try {
+        if (current == null) {
+            return;
+        }
+        boolean blocked = NEEDS_SETUP.contains(current.id()) && !ctx.ready();
+        Node view = blocked ? setup.view() : current.view();
+        pageTitle.setText(blocked ? T.t("setup.title") : current.title());
+        pageSubtitle.setText(blocked ? T.t("setup.subtitle") : current.subtitle());
+        if (pageHost.getChildren().size() != 1 || pageHost.getChildren().get(0) != view) {
+            pageHost.getChildren().setAll(view);
+        }
+        try {
+            if (blocked) {
+                setup.refresh();
+            } else {
                 current.refresh();
-            } catch (RuntimeException e) {
-                ErrorLog.write("refresh " + current.id(), e);
             }
+        } catch (RuntimeException e) {
+            ErrorLog.write("refresh " + current.id(), e);
         }
     }
 
@@ -378,18 +393,23 @@ public final class PanelApp extends Application {
         prefs.put("theme", name);
         for (Window w : Window.getWindows()) {
             if (w.getScene() != null) {
-                applyTheme(w.getScene().getRoot());
+                applyTheme(w.getScene());
             }
         }
-        applyTheme(mainScene.getRoot());
+        applyTheme(mainScene);
         guide.setDark(name.equals("dark"));
+        TitleBar.apply(name.equals("dark"));
     }
 
-    private void applyTheme(Parent root) {
+    /** Colours of the page (CSS class) and of the window's title bar (scene colour scheme). */
+    private void applyTheme(Scene scene) {
+        Parent root = scene.getRoot();
+        boolean dark = theme.equals("dark");
         root.getStyleClass().remove("dark");
-        if (theme.equals("dark")) {
+        if (dark) {
             root.getStyleClass().add("dark");
         }
+        scene.getPreferences().setColorScheme(dark ? ColorScheme.DARK : ColorScheme.LIGHT);
     }
 
     private void style(Scene scene) {
@@ -397,7 +417,7 @@ public final class PanelApp extends Application {
         if (!scene.getStylesheets().contains(css)) {
             scene.getStylesheets().add(css);
         }
-        applyTheme(scene.getRoot());
+        applyTheme(scene);
     }
 
     private void showLock() {
@@ -410,30 +430,8 @@ public final class PanelApp extends Application {
     private void showMain() {
         stage.setScene(mainScene);
         show(current == null ? "publish" : current.id());
-        publish.compareQuietly();
-        if (!prefs.getBoolean("welcomed", false)) {
-            Platform.runLater(this::welcome);
-        }
-    }
-
-    /** First start: what to set up, with the system check. */
-    private void welcome() {
-        prefs.putBoolean("welcomed", true);
-        SystemCheckView check = new SystemCheckView(ctx, () -> ctx.cfg.root());
-        VBox body = new VBox(10, Ui.wrapped(T.t("welcome.intro")), Ui.wrapped(T.t("welcome.step1")),
-                Ui.wrapped(T.t("welcome.step2")), Ui.wrapped(T.t("welcome.step3")),
-                Ui.label(T.t("welcome.system"), "section-title"), check);
-        body.setPrefWidth(720);
-        Dialog<ButtonType> d = new Dialog<>();
-        d.initOwner(stage);
-        d.setTitle(AppInfo.NAME);
-        d.setHeaderText(T.t("welcome.header"));
-        d.getDialogPane().setContent(body);
-        ButtonType go = new ButtonType(T.t("welcome.go"), ButtonBar.ButtonData.OK_DONE);
-        d.getDialogPane().getButtonTypes().addAll(go, Ui.cancel());
-        check.check();
-        if (d.showAndWait().filter(b -> b == go).isPresent()) {
-            show("settings");
+        if (ctx.ready()) {
+            publish.compareQuietly();
         }
     }
 
@@ -459,6 +457,7 @@ public final class PanelApp extends Application {
                     if (w.getScene() != null) {
                         style(w.getScene());
                     }
+                    w.addEventHandler(WindowEvent.WINDOW_SHOWN, e -> TitleBar.apply(theme.equals("dark")));
                     w.sceneProperty().addListener((o, a, b) -> {
                         if (b != null) style(b);
                     });

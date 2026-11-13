@@ -16,9 +16,9 @@ import java.util.List;
  */
 public final class AppInfo {
     public static final String NAME = "Panel Controller";
-    public static final String VERSION = "0.7.0";
+    public static final String VERSION = "0.8.0";
     public static final String STAGE = "beta";
-    public static final String AUTHOR = "Samet Şafak";
+    public static final String AUTHOR = "wreazy-cs";
     public static final String GITHUB = "https://github.com/wreazy-cs/panel-controller";
 
     public record Release(String version, LocalDate date, String title,
@@ -77,9 +77,5 @@ public final class AppInfo {
 
     public static String title() {
         return NAME + " " + VERSION + " " + STAGE;
-    }
-
-    public static String credit() {
-        return AUTHOR + " tarafından geliştirildi";
     }
 }

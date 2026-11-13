@@ -107,7 +107,6 @@ final class GuideTab {
         return template.replace("{{FONTS}}", fontFaces())
                 .replace("{{SCRIPT}}", script)
                 .replace("{{VERSION}}", AppInfo.VERSION)
-                .replace("{{AUTHOR}}", AppInfo.AUTHOR)
                 .replace("{{ERRORS}}", errorRows(lang));
     }
 

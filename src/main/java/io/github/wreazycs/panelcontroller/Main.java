@@ -205,7 +205,7 @@ public final class Main {
     }
 
     static void printVersion(PrintStream out, int count) {
-        out.println(AppInfo.title() + "  -  " + AppInfo.credit());
+        out.println(AppInfo.title());
         for (AppInfo.Release r : AppInfo.releases("tr").stream().limit(count).toList()) {
             out.println();
             out.println("v" + r.version() + "  " + r.date() + "  " + r.title());

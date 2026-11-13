@@ -1,4 +1,9 @@
 # Biçim: "## sürüm | tarih | başlık", sonra "+ eklendi", "* değişti", "! düzeltildi". En yeni üstte.
+## 0.8.0 | 2026-11-13 | Zorunlu kurulum
++ Kurulum ekranı: proje klasörü ve mağaza CDN adresi girilmeden Yayın, Geri dön ve Git açılmaz. CDN adresi ancak dosya okunabilirse kaydedilir.
+* İlk açılış penceresi kaldırıldı; yerini kurulum ekranı aldı.
+* Geliştirici adı yalnızca Hakkında sayfasında.
+! Pencerenin üst çubuğu koyu temada da koyu.
 ## 0.7.0 | 2026-11-13 | Sade arayüz, iki dil
 + Arayüz ve kullanım kılavuzu Türkçe ve İngilizce. Dil Ayarlar'dan seçilir.
 + Montserrat yazı tipi uygulamanın içinde.

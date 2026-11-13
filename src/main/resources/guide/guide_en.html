@@ -89,7 +89,7 @@
 <main id="main">
 <div class="wrap">
   <h1>Panel Controller</h1>
-  <p class="lead">Version {{VERSION}} · {{AUTHOR}}. Type a word or an error code in the box on the left. Clicking an error code in the app opens this page at that code.</p>
+  <p class="lead">Version {{VERSION}}. Type a word or an error code in the box on the left. Clicking an error code in the app opens this page at that code.</p>
 
   <section id="baslarken" data-group="Getting started">
     <h2>What it does</h2>
@@ -132,16 +132,17 @@
     <h2>Installation</h2>
     <ol class="steps">
       <li>Run <code>Panel Controller-&lt;version&gt;.exe</code>. No administrator rights and no Java needed.</li>
-      <li>Settings → Project → <i>Choose folder</i>: pick the folder that contains <code>kaynak/</code>.</li>
-      <li>Settings → <i>Store CDN address</i>: <code>https://platincdn.com/&lt;store no&gt;/tema/%s</code>. <i>Test connection</i>, then <i>Save</i>.</li>
+      <li>On first start the Setup screen opens. Use <i>Choose folder</i> to pick the folder that contains <code>kaynak/</code>.</li>
+      <li>Enter the store CDN address: <code>https://platincdn.com/&lt;store no&gt;/tema/%s</code>, then <i>Test and save</i>. The address is saved only if a file can be read from it.</li>
       <li>Change the language and theme in Settings if you like.</li>
     </ol>
+    <p>Both settings are required. Until they are done, Publish, Restore and Git show the Setup screen. Both can be changed later in Settings.</p>
     <p>CDN address: the address containing <code>tema/genel.css</code> in the store page's source, with <code>%s</code> in place of the file name.</p>
   </section>
 
   <section id="sistem" data-group="Getting started">
     <h2>System check</h2>
-    <p>Settings → <i>System check</i> and the first-start window. Java comes with the app; the rest is optional.</p>
+    <p>Settings → <i>System check</i>. Java comes with the app; the rest is optional.</p>
     <table>
       <tr><th>Tool</th><th>Without it</th></tr>
       <tr><td>Git</td><td>The Git page does not work.</td></tr>

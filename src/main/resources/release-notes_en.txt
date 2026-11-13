@@ -1,4 +1,9 @@
 # Format: "## version | date | title", then "+ added", "* changed", "! fixed". Newest first.
+## 0.8.0 | 2026-11-13 | Required setup
++ Setup screen: Publish, Restore and Git stay closed until the project folder and the store CDN address are set. The CDN address is saved only if a file can be read from it.
+* The first-start window is gone; the setup screen replaces it.
+* The developer name appears only on the About page.
+! The window's title bar is dark in the dark theme too.
 ## 0.7.0 | 2026-11-13 | Simpler interface, two languages
 + Interface and user guide in Turkish and English. Choose the language in Settings.
 + Montserrat font bundled with the app.
