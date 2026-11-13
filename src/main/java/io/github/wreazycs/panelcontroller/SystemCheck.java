@@ -12,9 +12,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * "Sistem kontrolü": what the app needs from the computer, checked without changing anything.
- * Java comes with the installer; git, Node.js and Python are optional helpers that unlock a
- * feature each. Missing ones can be installed with winget (the person sees and accepts its prompts).
+ * What the app needs from the computer, checked without changing anything. Java comes with the
+ * installer; git, Node.js and Python are optional and each enables one feature. Missing ones can be
+ * installed with winget (the person sees and accepts its prompts). Texts are added by the interface
+ * from {@link Item#id()}.
  */
 public final class SystemCheck {
     /** "git version 2.55.0", "v24.19.0", "Python 3.14.7", "java 27 2026-09-15": the first number, minor optional. */
@@ -25,10 +26,11 @@ public final class SystemCheck {
     public enum State { OK, MISSING, OLD, PROBLEM }
 
     /**
-     * One check. {@code wingetId} is the package to install when missing (null: nothing to install).
-     * {@code needed} says what stops working without it.
+     * One check. {@code id}: java, git, node, python, scripts or winget. {@code version} is what was found,
+     * {@code minimum} what is needed (for OLD), {@code info} extra detail (script count, failing file,
+     * bundled flag "bundled"). {@code wingetId} is the package to install when missing, or null.
      */
-    public record Item(String name, String needed, State state, String detail, String wingetId) {
+    public record Item(String id, String name, State state, String version, String minimum, String info, String wingetId) {
         public boolean ok() {
             return state == State.OK;
         }
@@ -38,11 +40,9 @@ public final class SystemCheck {
     public static List<Item> run(Path projectRoot) {
         List<Item> items = new ArrayList<>();
         items.add(java());
-        items.add(tool("Git", "Git sayfası (commit, push) ve durum kartı", List.of("git", "--version"), 2, 30, "Git.Git"));
-        items.add(tool("Node.js", "Doğrulamadaki JS sözdizimi denetimi (PC-208 uyarısı)",
-                List.of(nodeCommand(), "--version"), 18, 0, "OpenJS.NodeJS.LTS"));
-        Item python = tool("Python", "Test tezgahı ve projenin kendi Python betikleri", List.of(pythonCommand(), "--version"),
-                3, 8, "Python.Python.3.13");
+        items.add(tool("git", "Git", List.of("git", "--version"), 2, 30, "Git.Git"));
+        items.add(tool("node", "Node.js", List.of(nodeCommand(), "--version"), 18, 0, "OpenJS.NodeJS.LTS"));
+        Item python = tool("python", "Python", List.of(pythonCommand(), "--version"), 3, 8, "Python.Python.3.13");
         items.add(python);
         if (projectRoot != null) {
             items.add(projectScripts(projectRoot, python.ok()));
@@ -53,39 +53,36 @@ public final class SystemCheck {
 
     static Item java() {
         String v = System.getProperty("java.version", "?");
-        String home = System.getProperty("java.home", "");
-        boolean bundled = Files.isRegularFile(Path.of(home).getParent() == null ? Path.of(home) : Path.of(home).getParent()
-                .resolve("app").resolve("Panel Controller.cfg"));
-        int major = Runtime.version().feature();
-        if (major < 25) {
-            return new Item("Java", "Uygulamanın kendisi", State.OLD, "Java " + v + " (en az 25 gerekir)", "EclipseAdoptium.Temurin.25.JRE");
+        Path home = Path.of(System.getProperty("java.home", "."));
+        Path parent = home.getParent() == null ? home : home.getParent();
+        boolean bundled = Files.isRegularFile(parent.resolve("app").resolve("Panel Controller.cfg"));
+        if (Runtime.version().feature() < 25) {
+            return new Item("java", "Java", State.OLD, v, "25", "", "EclipseAdoptium.Temurin.25.JRE");
         }
-        return new Item("Java", "Uygulamanın kendisi", State.OK,
-                "Java " + v + (bundled ? " · uygulamanın içinde" : ""), null);
+        return new Item("java", "Java", State.OK, v, "", bundled ? "bundled" : "", null);
     }
 
     /** Runs {@code cmd} and reads the first version number from its output. */
-    static Item tool(String name, String needed, List<String> cmd, int minMajor, int minMinor, String wingetId) {
+    static Item tool(String id, String name, List<String> cmd, int minMajor, int minMinor, String wingetId) {
         String out = runQuiet(cmd, 15);
+        String min = minMajor + "." + minMinor;
         if (out == null) {
-            return new Item(name, needed, State.MISSING, "bulunamadı", wingetId);
+            return new Item(id, name, State.MISSING, "", min, "", wingetId);
         }
         Matcher m = VERSION.matcher(out);
         if (!m.find()) {
-            return new Item(name, needed, State.PROBLEM, "sürüm okunamadı: " + firstLine(out), wingetId);
+            return new Item(id, name, State.PROBLEM, "", min, firstLine(out), wingetId);
         }
         int major = Integer.parseInt(m.group(1));
         int minor = m.group(2) == null ? 0 : Integer.parseInt(m.group(2));
-        String version = m.group(0);
         if (major < minMajor || (major == minMajor && minor < minMinor)) {
-            return new Item(name, needed, State.OLD, version + " (en az " + minMajor + "." + minMinor + ")", wingetId);
+            return new Item(id, name, State.OLD, m.group(0), min, "", wingetId);
         }
-        return new Item(name, needed, State.OK, version, null);
+        return new Item(id, name, State.OK, m.group(0), min, "", null);
     }
 
     /** Parses every arac/*.py and kumanda/*.py of the project with Python (nothing is run or written). */
     static Item projectScripts(Path root, boolean pythonOk) {
-        String needed = "Projenin Python araçları (arac/, kumanda/)";
         List<Path> scripts = new ArrayList<>();
         for (String dir : new String[] {"arac", "kumanda"}) {
             Path d = root.resolve(dir);
@@ -93,15 +90,16 @@ public final class SystemCheck {
                 try (Stream<Path> s = Files.list(d)) {
                     s.filter(p -> p.getFileName().toString().endsWith(".py")).sorted().forEach(scripts::add);
                 } catch (IOException e) {
-                    return new Item("Python betikleri", needed, State.PROBLEM, e.getMessage(), null);
+                    return new Item("scripts", "Python", State.PROBLEM, "", "", e.getMessage(), null);
                 }
             }
         }
+        String count = String.valueOf(scripts.size());
         if (scripts.isEmpty()) {
-            return new Item("Python betikleri", needed, State.OK, "bu projede Python betiği yok", null);
+            return new Item("scripts", "Python", State.OK, "", "", "0", null);
         }
         if (!pythonOk) {
-            return new Item("Python betikleri", needed, State.MISSING, scripts.size() + " betik var, Python olmadan denetlenemiyor", null);
+            return new Item("scripts", "Python", State.MISSING, "", "", count, null);
         }
         List<String> cmd = new ArrayList<>(List.of(pythonCommand(), "-I", "-c",
                 "import ast,sys\nbad=[]\nfor f in sys.argv[1:]:\n"
@@ -111,21 +109,20 @@ public final class SystemCheck {
         scripts.forEach(p -> cmd.add(p.toString()));
         String out = runQuiet(cmd, 60);
         if (out == null) {
-            return new Item("Python betikleri", needed, State.PROBLEM, "denetim çalışmadı", null);
+            return new Item("scripts", "Python", State.PROBLEM, "", "", "python -c", null);
         }
         if (out.strip().startsWith("OK")) {
-            return new Item("Python betikleri", needed, State.OK, scripts.size() + " betik sözdizimi temiz", null);
+            return new Item("scripts", "Python", State.OK, "", "", count, null);
         }
-        return new Item("Python betikleri", needed, State.PROBLEM,
+        return new Item("scripts", "Python", State.PROBLEM, "", "",
                 out.strip().replace(root.toString() + java.io.File.separator, ""), null);
     }
 
     static Item winget() {
         String out = runQuiet(List.of("winget", "--version"), 15);
         return out == null
-                ? new Item("winget", "Eksik araçları tek tıkla kurmak", State.MISSING,
-                        "yok: araçları kendi sitelerinden kur (git-scm.com, nodejs.org, python.org)", null)
-                : new Item("winget", "Eksik araçları tek tıkla kurmak", State.OK, firstLine(out), null);
+                ? new Item("winget", "winget", State.MISSING, "", "", "", null)
+                : new Item("winget", "winget", State.OK, firstLine(out), "", "", null);
     }
 
     static String pythonCommand() {
@@ -140,10 +137,10 @@ public final class SystemCheck {
         return Files.isRegularFile(p) ? p.toString() : "node";
     }
 
-    /** The winget command that installs a package, run in a visible console so its prompts are seen. */
+    /** The winget command that installs a package, in a visible console so its prompts are seen. */
     public static List<String> installCommand(String wingetId) {
         if (wingetId == null || !wingetId.matches("[A-Za-z0-9.\\-]+")) {
-            throw new IllegalArgumentException("geçersiz paket");
+            throw new IllegalArgumentException("invalid package id");
         }
         // start "" <command>: the empty first argument is the window title
         return List.of("cmd.exe", "/c", "start", "", "cmd.exe", "/k",
@@ -160,9 +157,8 @@ public final class SystemCheck {
                 p.destroyForcibly();
                 return null;
             }
-            String text = new String(out, StandardCharsets.UTF_8);
-            // the Microsoft Store "python" stub exits with 9009 and prints a hint
-            return p.exitValue() == 0 ? text : null;
+            // the Microsoft Store "python" stub fails with exit code 9009
+            return p.exitValue() == 0 ? new String(out, StandardCharsets.UTF_8) : null;
         } catch (IOException e) {
             return null;
         } catch (InterruptedException e) {

@@ -18,6 +18,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -28,11 +29,10 @@ import javafx.scene.layout.VBox;
 
 /**
  * Git: choose the changed files, write a short message, commit; push only when build and validation
- * are clean (the Python rule). Commits go as "... -p" with a link to Panel Controller.
+ * are clean. Commits go as "... -p" with a link to Panel Controller.
  */
 final class GitPage implements Page {
 
-    /** A changed file with its checkbox state. */
     static final class Item {
         final GitRepo.Change change;
         final SimpleBooleanProperty selected = new SimpleBooleanProperty(false);
@@ -64,58 +64,55 @@ final class GitPage implements Page {
         pick.setMinWidth(44);
         pick.setMaxWidth(44);
         pick.setSortable(false);
-        TableColumn<Item, Item> state = new TableColumn<>("Durum");
+        TableColumn<Item, Item> state = new TableColumn<>(T.t("git.col.state"));
         state.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue()));
-        state.setCellFactory(col -> new javafx.scene.control.TableCell<>() {
+        state.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(Item it, boolean empty) {
                 super.updateItem(it, empty);
                 setText(null);
-                setGraphic(empty || it == null ? null : Ui.chip(it.change.label(),
-                        it.change.code().trim().equals("??") ? "info" : it.change.code().contains("D") ? "err" : "warn"));
+                if (empty || it == null) {
+                    setGraphic(null);
+                    return;
+                }
+                String code = it.change.code().trim();
+                setGraphic(Ui.chip(label(code), code.equals("??") ? "info" : code.contains("D") ? "err" : "warn"));
             }
         });
         state.setPrefWidth(170);
         state.setMinWidth(170);
         state.setMaxWidth(170);
         state.setSortable(false);
-        TableColumn<Item, String> path = new TableColumn<>("Dosya");
+        TableColumn<Item, String> path = new TableColumn<>(T.t("git.col.file"));
         path.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().change.path()));
         path.setSortable(false);
         table.getColumns().addAll(List.of(pick, state, path));
         table.setEditable(true);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        table.setPlaceholder(Ui.label("Değişiklik yok: her şey commit edilmiş.", "muted"));
+        table.setPlaceholder(Ui.label(T.t("git.empty"), "muted"));
         table.setPrefHeight(260);
 
-        Button all = Ui.button("Tümünü seç", null, "small");
+        Button all = Ui.button(T.t("git.all"), null, "small");
         all.setOnAction(e -> table.getItems().forEach(i -> i.selected.set(true)));
-        Button none = Ui.button("Hiçbiri", null, "small");
+        Button none = Ui.button(T.t("git.none"), null, "small");
         none.setOnAction(e -> table.getItems().forEach(i -> i.selected.set(false)));
-        Button reload = Ui.iconButton("refresh", "Yenile");
+        Button reload = Ui.iconButton("refresh", T.t("git.refresh"));
         reload.setOnAction(e -> refresh());
 
-        message.setPromptText("Ne değişti? Örnek: sepet bildirimi düzeltildi");
+        message.setPromptText(T.t("git.message.prompt"));
         message.textProperty().addListener((o, a, b) -> updatePreview());
         HBox.setHgrow(message, Priority.ALWAYS);
-        Button commit = ctx.guard(Ui.button("Commit et", "check", "primary"));
+        Button commit = ctx.guard(Ui.button(T.t("git.commit"), "check", "primary"));
         commit.setOnAction(e -> commit());
-        Button push = ctx.guard(Ui.button("Push et", "upload"));
+        Button push = ctx.guard(Ui.button(T.t("git.push"), "upload"));
         push.setOnAction(e -> push());
 
-        VBox changes = Ui.card(
-                Ui.cardHeader("Değişen dosyalar", "Commit'e girecekleri işaretle.", all, none, reload),
-                table);
-        VBox send = Ui.card(
-                Ui.cardHeader("Commit ve push",
-                        "Tarih, gün, saat ve -p (Panel Controller) eki otomatik eklenir. Push öncesi derle ve doğrula çalışır; "
-                                + "temiz değilse push yapılmaz. Push, panele yüklendi demek değildir."),
-                new HBox(8, message, commit, push), preview);
-        VBox log = Ui.card(Ui.cardHeader("Son commit'ler", null), history);
+        VBox changes = Ui.card(Ui.cardHeader(T.t("git.changes"), T.t("git.changes.sub"), all, none, reload), table);
+        VBox send = Ui.card(Ui.cardHeader(T.t("git.send"), T.t("git.send.sub")), new HBox(8, message, commit, push), preview);
+        VBox log = Ui.card(Ui.cardHeader(T.t("git.history"), null), history);
         HBox head = new HBox(10, Icons.of("git", 20), branch, chips);
         head.setAlignment(Pos.CENTER_LEFT);
         repoBody = new VBox(16, head, changes, send, log);
-        notRepo = Ui.emptyState("git", "Proje bir git deposu değil",
-                "Commit ve push için proje klasörünün git ile izlenmesi gerekiyor (" + Problem.NOT_A_REPO.code() + ").");
+        notRepo = Ui.emptyState("git", T.t("git.notRepo.title"), T.t("git.notRepo.text", Problem.NOT_A_REPO.code()));
 
         content.getChildren().add(repoBody);
         content.setPadding(new Insets(4, 24, 24, 24));
@@ -125,13 +122,23 @@ final class GitPage implements Page {
     }
 
     @Override public String id() { return "git"; }
-    @Override public String title() { return "Git"; }
-    @Override public String subtitle() { return "Değişiklikleri kaydet (commit) ve GitHub'a gönder (push)."; }
+    @Override public String title() { return T.t("git.title"); }
+    @Override public String subtitle() { return T.t("git.subtitle"); }
     @Override public String icon() { return "git"; }
     @Override public Node view() { return view; }
 
+    /** Two-letter git status in words. */
+    static String label(String code) {
+        if (code.equals("??")) return T.t("change.new");
+        if (code.contains("D")) return T.t("change.deleted");
+        if (code.contains("R")) return T.t("change.renamed");
+        if (code.contains("A")) return T.t("change.added");
+        if (code.contains("U")) return T.t("change.conflict");
+        return T.t("change.modified");
+    }
+
     private void updatePreview() {
-        String m = message.getText().isBlank() ? "<mesaj>" : message.getText();
+        String m = message.getText().isBlank() ? "<…>" : message.getText();
         preview.setText(GitRepo.commitSubject(m, LocalDateTime.now()) + "\n" + GitRepo.commitBody());
     }
 
@@ -151,7 +158,7 @@ final class GitPage implements Page {
             } catch (IOException e) {
                 Platform.runLater(() -> {
                     content.getChildren().setAll(repoBody);
-                    branch.setText("git okunamadı: " + e.getMessage());
+                    branch.setText(T.t("git.unreadable", e.getMessage()));
                 });
             }
         });
@@ -159,11 +166,11 @@ final class GitPage implements Page {
 
     private void show(GitRepo.Status s, List<String> log) {
         content.getChildren().setAll(repoBody);
-        branch.setText("Dal: " + s.branch());
+        branch.setText(T.t("git.branch", s.branch()));
         chips.getChildren().clear();
-        if (s.ahead() > 0) chips.getChildren().add(Ui.chip(s.ahead() + " push edilmemiş", "warn"));
-        if (s.behind() > 0) chips.getChildren().add(Ui.chip(s.behind() + " uzakta yeni", "info"));
-        if (s.ahead() == 0 && s.behind() == 0) chips.getChildren().add(Ui.chip("uzakla eşit", "ok"));
+        if (s.ahead() > 0) chips.getChildren().add(Ui.chip(T.t("git.ahead", s.ahead()), "warn"));
+        if (s.behind() > 0) chips.getChildren().add(Ui.chip(T.t("git.behind", s.behind()), "info"));
+        if (s.ahead() == 0 && s.behind() == 0) chips.getChildren().add(Ui.chip(T.t("git.even"), "ok"));
         List<String> previouslySelected = table.getItems().stream().filter(i -> i.selected.get()).map(i -> i.change.path()).toList();
         List<Item> items = new ArrayList<>();
         for (GitRepo.Change c : s.changes()) {
@@ -174,7 +181,7 @@ final class GitPage implements Page {
         table.getItems().setAll(items);
         history.getChildren().clear();
         if (log.isEmpty()) {
-            history.getChildren().add(Ui.label("Henüz commit yok.", "muted"));
+            history.getChildren().add(Ui.label(T.t("git.noHistory"), "muted"));
         }
         for (String l : log) {
             history.getChildren().add(Ui.label(l, "mono", "small"));
@@ -186,56 +193,55 @@ final class GitPage implements Page {
         String msg = message.getText().strip();
         if (paths.isEmpty() || msg.isEmpty()) {
             Problem p = paths.isEmpty() ? Problem.NOTHING_SELECTED : Problem.EMPTY_MESSAGE;
-            ctx.activity.start("Commit").done("err", p.title(), List.of(Finding.of(p, "", "")));
+            ctx.activity.start(T.t("job.commit")).done("err", T.title(p), List.of(Finding.of(p, "", "")));
             return;
         }
-        if (!Ui.confirm(ctx.stage, paths.size() + " dosya commit edilsin mi?",
-                GitRepo.commitSubject(msg, LocalDateTime.now()) + "\n\n" + String.join("\n", paths.stream().limit(12).toList())
-                        + (paths.size() > 12 ? "\n… ve " + (paths.size() - 12) + " dosya daha" : ""), "Commit et")) {
+        String list = String.join("\n", paths.stream().limit(12).toList())
+                + (paths.size() > 12 ? "\n" + T.t("git.commit.more", paths.size() - 12) : "");
+        if (!Ui.confirm(ctx.stage, T.t("git.commit.confirm", paths.size()),
+                GitRepo.commitSubject(msg, LocalDateTime.now()) + "\n\n" + list, T.t("git.commit"))) {
             return;
         }
         GitRepo git = new GitRepo(ctx.cfg.root());
-        ctx.run("Commit", out -> {
+        ctx.run(T.t("job.commit"), out -> {
             GitRepo.Result r = git.commit(paths, msg);
             out.print(r.output());
             return r;
         }, (e, r) -> {
             if (r.ok()) {
                 message.clear();
-                e.done("ok", paths.size() + " dosya commit edildi. GitHub'a göndermek için Push et.", List.of());
+                e.done("ok", T.t("git.commit.ok", paths.size()), List.of());
             } else {
-                e.done("err", "Commit yapılamadı.", r.failure() == null ? List.of() : List.of(r.failure()));
+                e.done("err", T.t("git.commit.fail"), r.failure() == null ? List.of() : List.of(r.failure()));
             }
         });
     }
 
-    /** Python rule: build + validate first; push only when both are clean. */
+    /** Build + validate first; push only when both are clean. */
     private void push() {
-        if (!Ui.confirm(ctx.stage, "Push edilsin mi?",
-                "Önce derle ve doğrula çalışır; temiz değilse push yapılmaz.\nPush, panele yüklendi demek değildir.", "Push et")) {
+        if (!Ui.confirm(ctx.stage, T.t("git.push.confirm"), T.t("git.push.text"), T.t("git.push"))) {
             return;
         }
         GitRepo git = new GitRepo(ctx.cfg.root());
-        ctx.run("Push", out -> {
-            out.println(">>> push oncesi: derle + dogrula");
+        ctx.run(T.t("job.push"), out -> {
+            out.println(">>> push: build + validate");
             Builder.Report b = new Builder(ctx.cfg, out).build(Builder.Mode.PANEL, List.of());
             if (!b.ok()) {
-                return new GitRepo.Result(false, "", Finding.of(Problem.PUSH_BLOCKED, "", "derleme: " + b.failure().line()));
+                return new GitRepo.Result(false, "", Finding.of(Problem.PUSH_BLOCKED, "", b.failure().line()));
             }
             PanelValidator.Report v = new PanelValidator(ctx.cfg, out).run();
             if (!v.ok()) {
                 Finding first = v.allErrors().isEmpty() ? null : v.allErrors().get(0);
-                return new GitRepo.Result(false, "", Finding.of(Problem.PUSH_BLOCKED, "",
-                        "doğrulama: " + (first == null ? "" : first.line())));
+                return new GitRepo.Result(false, "", Finding.of(Problem.PUSH_BLOCKED, "", first == null ? "" : first.line()));
             }
             GitRepo.Result r = git.push();
             out.print(r.output());
             return r;
         }, (e, r) -> {
             if (r.ok()) {
-                e.done("ok", "Push edildi. Bu, panele yüklendi demek değil.", List.of());
+                e.done("ok", T.t("git.push.ok"), List.of());
             } else {
-                e.done("err", "Push yapılmadı.", r.failure() == null ? List.of() : List.of(r.failure()));
+                e.done("err", T.t("git.push.fail"), r.failure() == null ? List.of() : List.of(r.failure()));
             }
         });
     }

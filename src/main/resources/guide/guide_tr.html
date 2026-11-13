@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Panel Controller - Kullanım kılavuzu</title>
+<style>
+{{FONTS}}
+  :root {
+    --bg: #F3F5F8; --surface: #FFFFFF; --alt: #F7F8FA; --border: #DCE1E8; --text: #1B2433; --muted: #5A6B85;
+    --accent: #2D65E3; --accent-soft: #E4ECFB; --accent-text: #1A47A8;
+    --ok: #1F6B38; --ok-soft: #E3F2E7; --warn: #7A5200; --warn-soft: #FFF1CC; --err: #9B1F1B; --err-soft: #FBE4E2;
+    --code: #F1F3F7;
+  }
+  html.dark {
+    --bg: #14181F; --surface: #1C212A; --alt: #232A35; --border: #303846; --text: #E6EAF0; --muted: #9AA6B8;
+    --accent: #4F82F0; --accent-soft: #22325A; --accent-text: #A9C3FA;
+    --ok: #7BD79A; --ok-soft: #1A3226; --warn: #F2C35B; --warn-soft: #3A2F14; --err: #FF8F86; --err-soft: #3E1F1E;
+    --code: #171B22;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: 'Montserrat', 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: var(--text); background: var(--bg); }
+  h1, h2, h3, b, th, .nav-head b { font-weight: 700; }
+  .layout { display: flex; height: 100%; }
+  nav { width: 270px; flex: none; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .nav-head { padding: 18px 16px 10px; }
+  .nav-head b { font-size: 15px; }
+  .nav-head .ver { color: var(--muted); font-size: 12px; }
+  .search { margin: 8px 16px 6px; position: relative; }
+  .search input { width: 100%; padding: 8px 10px 8px 32px; border: 1px solid var(--border); border-radius: 6px;
+                  background: var(--alt); color: var(--text); font: inherit; outline: none; }
+  .search input:focus { border-color: var(--accent); }
+  .search svg { position: absolute; left: 9px; top: 9px; }
+  .count { margin: 0 16px 8px; color: var(--muted); font-size: 12px; min-height: 18px; }
+  .toc { overflow-y: auto; padding: 0 8px 16px; flex: 1; }
+  .toc a { display: block; padding: 6px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+  .toc a:hover { background: var(--alt); color: var(--text); }
+  .toc a.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+  .toc .group { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 12px 10px 4px; font-weight: 600; }
+  main { flex: 1; overflow-y: auto; padding: 28px 40px 80px; }
+  .wrap { max-width: 900px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 0 0 10px; }
+  h3 { font-size: 15px; margin: 18px 0 6px; }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin: 0 0 18px; }
+  section.flash { box-shadow: 0 0 0 3px var(--accent); }
+  .lead { color: var(--muted); margin: 0 0 22px; }
+  p { margin: 6px 0 10px; }
+  code, kbd { font-family: Consolas, monospace; font-size: 12.5px; background: var(--code); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+  kbd { border-bottom-width: 2px; }
+  pre { font-family: Consolas, monospace; font-size: 12.5px; background: var(--code); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { background: var(--alt); color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 700; white-space: nowrap; background: var(--alt); color: var(--muted); }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.err { background: var(--err-soft); color: var(--err); }
+  .chip.info { background: var(--accent-soft); color: var(--accent-text); }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 6px; margin: 10px 0; }
+  .note.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 10px 0; }
+  .steps > li { counter-increment: s; position: relative; padding: 4px 0 10px 40px; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 2px; width: 26px; height: 26px; border-radius: 13px;
+                        background: var(--accent-soft); color: var(--accent-text); font-weight: 700; text-align: center; line-height: 26px; }
+  figure { margin: 12px 0 16px; }
+  figcaption { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+  svg text { font-family: 'Montserrat', 'Segoe UI', sans-serif; }
+  .err-group td { background: var(--alt); font-weight: 700; color: var(--muted); }
+  tr.code-row td:first-child { white-space: nowrap; }
+  .hidden { display: none !important; }
+  .empty { display: none; color: var(--muted); padding: 30px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .box { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--alt); }
+  .box b { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="nav-head"><b>Kullanım kılavuzu</b><div class="ver">Panel Controller {{VERSION}}</div></div>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <input id="q" type="search" placeholder="Konu ya da hata kodu ara (ör. PC-203)" autocomplete="off">
+  </div>
+  <div class="count" id="count"></div>
+  <div class="toc" id="toc"></div>
+</nav>
+<main id="main">
+<div class="wrap">
+  <h1>Panel Controller</h1>
+  <p class="lead">Sürüm {{VERSION}} · {{AUTHOR}}. Soldaki kutuya bir kelime ya da hata kodu yaz. Uygulamada bir hata koduna tıklayınca bu sayfa o kodda açılır.</p>
+
+  <section id="baslarken" data-group="Başlarken">
+    <h2>Ne yapar</h2>
+    <p>Tema CSS ve JS dosyalarını panele yapıştırmadan önce denetler ve değişiklikleri git ile kaydeder.</p>
+    <figure>
+      <svg viewBox="0 0 860 190" width="100%" role="img" aria-label="Akış">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="var(--muted)"/></marker></defs>
+        <g font-size="13">
+          <rect x="10" y="40" width="140" height="64" rx="8" fill="var(--alt)" stroke="var(--border)"/>
+          <text x="80" y="66" text-anchor="middle" font-weight="700" fill="var(--text)">kaynak/</text>
+          <text x="80" y="86" text-anchor="middle" fill="var(--muted)" font-size="12">küçük parçalar</text>
+          <rect x="190" y="40" width="120" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="250" y="66" text-anchor="middle" font-weight="700" fill="var(--accent-text)">Derle</text>
+          <text x="250" y="86" text-anchor="middle" fill="var(--accent-text)" font-size="12">birleştir</text>
+          <rect x="350" y="40" width="130" height="64" rx="8" fill="var(--alt)" stroke="var(--border)"/>
+          <text x="415" y="66" text-anchor="middle" font-weight="700" fill="var(--text)">cikti/</text>
+          <text x="415" y="86" text-anchor="middle" fill="var(--muted)" font-size="12">panel dosyaları</text>
+          <rect x="520" y="40" width="130" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="585" y="66" text-anchor="middle" font-weight="700" fill="var(--accent-text)">Doğrula</text>
+          <text x="585" y="86" text-anchor="middle" fill="var(--accent-text)" font-size="12">panel simülasyonu</text>
+          <rect x="690" y="40" width="160" height="64" rx="8" fill="var(--ok-soft)" stroke="var(--ok)"/>
+          <text x="770" y="66" text-anchor="middle" font-weight="700" fill="var(--ok)">Panel</text>
+          <text x="770" y="86" text-anchor="middle" fill="var(--ok)" font-size="12">elle yapıştırılır</text>
+          <path d="M150 72H186 M310 72H346 M480 72H516 M650 72H686" stroke="var(--muted)" stroke-width="2" marker-end="url(#ar)"/>
+          <rect x="690" y="134" width="160" height="44" rx="8" fill="var(--warn-soft)" stroke="var(--warn)"/>
+          <text x="770" y="161" text-anchor="middle" font-weight="700" fill="var(--warn)">Yedek</text>
+          <path d="M770 104V130" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+          <text x="560" y="160" text-anchor="end" fill="var(--muted)" font-size="12">Yüklemeden önce canlının kopyası →</text>
+        </g>
+      </svg>
+    </figure>
+    <div class="grid2">
+      <div class="box"><b>Uygulama</b>Yedek alır, derler, doğrular, canlıyla karşılaştırır, dosyayı panoya alır, git'e gönderir.</div>
+      <div class="box"><b>Sen</b>Kodu yazarsın, panelde slotu açıp yapıştırırsın ve kaydedersin.</div>
+    </div>
+    <div class="note warn"><b>Panele yükleme neden elle?</b> PlatinMarket API'sinde (Reform API) tema CSS ve JS dosyaları için uç nokta yok. Bu yüzden uygulama dosyayı panele kendisi gönderemez; sırayla panoya alır.</div>
+  </section>
+
+  <section id="kurulum" data-group="Başlarken">
+    <h2>Kurulum</h2>
+    <ol class="steps">
+      <li><code>Panel Controller-&lt;sürüm&gt;.exe</code> dosyasını çalıştır. Yönetici izni ve Java gerekmez.</li>
+      <li>Ayarlar → Proje → <i>Klasör seç</i>: içinde <code>kaynak/</code> olan klasörü seç.</li>
+      <li>Ayarlar → <i>Mağaza CDN adresi</i>: <code>https://platincdn.com/&lt;mağaza no&gt;/tema/%s</code>. <i>Bağlantıyı dene</i>, sonra <i>Kaydet</i>.</li>
+      <li>İstersen Ayarlar'dan dili ve temayı değiştir.</li>
+    </ol>
+    <p>CDN adresi: sitenin sayfa kaynağında <code>tema/genel.css</code> geçen adres; dosya adının yerine <code>%s</code> yazılır.</p>
+  </section>
+
+  <section id="sistem" data-group="Başlarken">
+    <h2>Sistem kontrolü</h2>
+    <p>Ayarlar → <i>Sistem kontrolü</i> ve ilk açılış penceresi. Java uygulamanın içindedir; diğerleri isteğe bağlıdır.</p>
+    <table>
+      <tr><th>Araç</th><th>Olmazsa</th></tr>
+      <tr><td>Git</td><td>Git sayfası çalışmaz.</td></tr>
+      <tr><td>Node.js</td><td>Doğrulamada JS sözdizimi denetimi atlanır (<a href="#PC-208" data-go="PC-208">PC-208</a>).</td></tr>
+      <tr><td>Python</td><td>Projenin Python betikleri çalışmaz ve denetlenemez.</td></tr>
+      <tr><td>winget</td><td>Eksik araçlar tek tıkla kurulamaz.</td></tr>
+    </table>
+    <p><i>Kur</i> düğmesi bir komut penceresinde winget açar; lisans ve yönetici izni o pencerede sorulur.</p>
+  </section>
+
+  <section id="gunluk-akis" data-group="Kullanım">
+    <h2>Günlük akış</h2>
+    <ol class="steps">
+      <li><b>Yayın → Hazırla.</b> Yedek, derleme ve panel simülasyonu çalışır. Üç adım yeşil olmalı. Kırmızı varsa işlem kartındaki koda tıkla, düzelt; <b>panele yükleme yapma.</b></li>
+      <li><b>Canlıyla karşılaştır</b> (Hazırla'dan sonra kendiliğinden çalışır). <span class="chip warn">farklı</span> dosyalar yüklenecek olanlardır.</li>
+      <li><b>Yükleme sihirbazı.</b> Farklı dosyaları sırayla panoya alır; her adımda hangi slota yapıştırılacağını yazar.</li>
+      <li>Sihirbaz bitince karşılaştırma yeniden çalışır. Hepsi <span class="chip ok">aynı</span> olmalı. Değilse <a href="#onbellek" data-go="onbellek">önbellek</a>.</li>
+      <li>Sitede tarayıcı konsoluna bak. Yalnızca <code>platincdn.com/…/tema/</code> kaynaklı hatalar bizimdir.</li>
+      <li><b>Git → commit ve push.</b></li>
+    </ol>
+  </section>
+
+  <section id="yayin" data-group="Ekranlar">
+    <h2>Yayın ekranı</h2>
+    <figure>
+      <svg viewBox="0 0 860 330" width="100%" role="img" aria-label="Yayın ekranı">
+        <g font-size="12">
+          <rect x="0.5" y="0.5" width="859" height="329" rx="10" fill="var(--bg)" stroke="var(--border)"/>
+          <rect x="0.5" y="0.5" width="150" height="329" rx="10" fill="var(--surface)" stroke="var(--border)"/>
+          <text x="16" y="30" font-weight="700" fill="var(--text)">Panel Controller</text>
+          <rect x="10" y="50" width="130" height="26" rx="6" fill="var(--accent-soft)"/><text x="22" y="67" fill="var(--accent-text)" font-weight="700">Yayın</text>
+          <text x="22" y="97" fill="var(--muted)">Geri dön</text><text x="22" y="122" fill="var(--muted)">Git</text>
+          <text x="22" y="160" fill="var(--muted)">Ayarlar</text><text x="22" y="185" fill="var(--muted)">Hakkında</text>
+          <g fill="var(--surface)" stroke="var(--border)">
+            <rect x="166" y="20" width="118" height="54" rx="6"/><rect x="292" y="20" width="118" height="54" rx="6"/><rect x="418" y="20" width="118" height="54" rx="6"/><rect x="544" y="20" width="118" height="54" rx="6"/>
+            <rect x="166" y="86" width="496" height="70" rx="6"/>
+            <rect x="166" y="220" width="496" height="96" rx="6"/>
+            <rect x="676" y="20" width="172" height="296" rx="6"/>
+          </g>
+          <rect x="166" y="20" width="3" height="54" fill="var(--ok)"/><rect x="292" y="20" width="3" height="54" fill="var(--warn)"/><rect x="418" y="20" width="3" height="54" fill="var(--ok)"/><rect x="544" y="20" width="3" height="54" fill="var(--accent)"/>
+          <text x="178" y="40" fill="var(--muted)" font-size="10">SON YEDEK</text><text x="178" y="60" fill="var(--ok)" font-weight="700">12 dk önce</text>
+          <text x="304" y="40" fill="var(--muted)" font-size="10">CANLIYLA FARK</text><text x="304" y="60" fill="var(--warn)" font-weight="700">2 farklı</text>
+          <text x="430" y="40" fill="var(--muted)" font-size="10">DERLEME</text><text x="430" y="60" fill="var(--ok)" font-weight="700">Güncel</text>
+          <text x="556" y="40" fill="var(--muted)" font-size="10">GIT</text><text x="556" y="60" fill="var(--accent-text)" font-weight="700">3 değişiklik</text>
+          <circle cx="190" cy="120" r="10" fill="var(--ok-soft)" stroke="var(--ok)"/><circle cx="300" cy="120" r="10" fill="var(--ok-soft)" stroke="var(--ok)"/><circle cx="410" cy="120" r="10" fill="var(--ok-soft)" stroke="var(--ok)"/>
+          <text x="206" y="124" fill="var(--text)">Yedek</text><text x="316" y="124" fill="var(--text)">Derle</text><text x="426" y="124" fill="var(--text)">Doğrula</text>
+          <rect x="560" y="108" width="88" height="26" rx="5" fill="var(--accent)"/><text x="604" y="125" text-anchor="middle" fill="#fff" font-weight="700">Hazırla</text>
+          <rect x="166" y="168" width="496" height="40" rx="6" fill="var(--warn-soft)" stroke="var(--warn)"/><text x="180" y="192" fill="var(--warn)">2 dosya canlıdan farklı …</text>
+          <rect x="520" y="176" width="132" height="24" rx="5" fill="var(--accent)"/><text x="586" y="192" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Sihirbazı başlat</text>
+          <text x="180" y="244" fill="var(--muted)" font-size="10"># DOSYA   SLOT   HEDEF   DURUM   CANLI</text>
+          <text x="180" y="272" fill="var(--text)">1 anasayfa.css   CSS / Anasayfa</text><rect x="520" y="261" width="40" height="15" rx="7" fill="var(--ok-soft)"/><rect x="570" y="261" width="44" height="15" rx="7" fill="var(--warn-soft)"/>
+          <text x="180" y="300" fill="var(--text)">9 genel.js   JS / Genel</text><rect x="520" y="289" width="40" height="15" rx="7" fill="var(--ok-soft)"/><rect x="570" y="289" width="44" height="15" rx="7" fill="var(--ok-soft)"/>
+          <text x="690" y="42" font-weight="700" fill="var(--text)">İşlemler</text>
+          <rect x="688" y="54" width="148" height="56" rx="6" fill="var(--alt)" stroke="var(--border)"/><rect x="688" y="54" width="3" height="56" fill="var(--ok)"/><text x="700" y="74" fill="var(--text)" font-weight="700">Hazırla</text><text x="700" y="94" fill="var(--muted)" font-size="11">Hazır. Sıra: …</text>
+        </g>
+        <g font-size="12" font-weight="700" fill="#fff">
+          <circle cx="166" cy="20" r="10" fill="var(--accent)"/><text x="166" y="24" text-anchor="middle">A</text>
+          <circle cx="166" cy="86" r="10" fill="var(--accent)"/><text x="166" y="90" text-anchor="middle">B</text>
+          <circle cx="166" cy="168" r="10" fill="var(--accent)"/><text x="166" y="172" text-anchor="middle">C</text>
+          <circle cx="166" cy="220" r="10" fill="var(--accent)"/><text x="166" y="224" text-anchor="middle">D</text>
+          <circle cx="676" cy="20" r="10" fill="var(--accent)"/><text x="676" y="24" text-anchor="middle">E</text>
+        </g>
+      </svg>
+    </figure>
+    <table>
+      <tr><th>Bölüm</th><th>Ne gösterir</th></tr>
+      <tr><td><b>A</b> Durum kartları</td><td>Son yedek, canlıyla fark, derleme, git. Renkler: <a href="#kartlar" data-go="kartlar">Durum kartları</a>.</td></tr>
+      <tr><td><b>B</b> Yayına hazırla</td><td>Hazırla ve üç adımın göstergesi. <i>Tek adım</i>: yalnız yedek, yalnız derle, yalnız doğrula, inceleme kopyası.</td></tr>
+      <tr><td><b>C</b> Uyarı / sihirbaz</td><td>Canlıdan farklı dosya varsa burada yazar; sihirbaz da burada çalışır.</td></tr>
+      <tr><td><b>D</b> Dosyalar</td><td>Yapıştırma sırasıyla. Durum: <span class="chip ok">hazır</span> <span class="chip warn">derlenmeli</span> <span class="chip warn">hedef aşıldı</span>. Canlı: <span class="chip ok">aynı</span> <span class="chip warn">farklı</span> <span class="chip err">okunamadı</span>. Satır sonundaki düğme dosyayı panoya alır.</td></tr>
+      <tr><td><b>E</b> İşlemler</td><td>Her işlemin sonucu. Bkz. <a href="#islemler" data-go="islemler">İşlem kartları</a>.</td></tr>
+    </table>
+  </section>
+
+  <section id="kartlar" data-group="Ekranlar">
+    <h2>Durum kartları</h2>
+    <table>
+      <tr><th>Kart</th><th><span class="chip ok">yeşil</span></th><th><span class="chip warn">sarı</span></th><th><span class="chip err">kırmızı</span></th></tr>
+      <tr><td>Son yedek</td><td>24 saatten yeni</td><td>1–7 gün</td><td>Yok ya da 7 günden eski</td></tr>
+      <tr><td>Canlıyla fark</td><td>Hepsi aynı</td><td>Farklı dosya var</td><td>CDN'den okunamadı</td></tr>
+      <tr><td>Derleme</td><td>Güncel</td><td>Kaynak yeni ya da hedef aşıldı</td><td>Son derleme hata verdi</td></tr>
+      <tr><td>Git</td><td>Temiz</td><td>Push edilmemiş commit</td><td>Okunamadı</td></tr>
+    </table>
+    <p>Kartlar 30 saniyede bir ve <kbd>F5</kbd> ile yenilenir. Açılışta canlıyla karşılaştırma kendiliğinden yapılır.</p>
+  </section>
+
+  <section id="sihirbaz" data-group="Ekranlar">
+    <h2>Yükleme sihirbazı</h2>
+    <p>Yalnızca canlıdan <span class="chip warn">farklı</span> dosyaları alır. Sıra: <b>önce sayfa slotları</b> (anasayfa, kategori, ürün, sepet), <b>en son genel</b>. Genel her sayfayı etkiler, en son gider.</p>
+    <ol class="steps">
+      <li>Dosya panoya kendiliğinden alınır.</li>
+      <li>Panelde yazan slotu aç, içeriği sil (<kbd>Ctrl</kbd>+<kbd>A</kbd>, <kbd>Delete</kbd>), <kbd>Ctrl</kbd>+<kbd>V</kbd>, kaydet.</li>
+      <li><i>Yükledim, sonraki</i>. Son adımda <i>Yükledim, bitir</i>; karşılaştırma yeniden çalışır.</li>
+    </ol>
+    <p>Son yedek 2 saatten eskiyse sihirbaz önce sorar: <i>Şimdi yedek al ve devam et</i>, <i>Yedeksiz devam et</i> ya da <i>Vazgeç</i>.</p>
+    <div class="note warn">Dosyayı editörden değil uygulamadan kopyala. Açık bir editör sekmesi eski içeriği gösterebilir.</div>
+  </section>
+
+  <section id="geri-don" data-group="Ekranlar">
+    <h2>Geri dön</h2>
+    <ol class="steps">
+      <li>En üstteki yedek, son yüklemeden hemen önceki canlı haldir.</li>
+      <li>Dosyanın yanındaki <i>Panoya kopyala</i>.</li>
+      <li>Panelde aynı slotu aç, içeriği sil, yapıştır, kaydet.</li>
+      <li>Yayın → <i>Canlıyla karşılaştır</i>.</li>
+    </ol>
+  </section>
+
+  <section id="git" data-group="Ekranlar">
+    <h2>Git</h2>
+    <p>Dosyaları işaretle, kısa bir mesaj yaz, <i>Commit et</i>. Mesaj şu biçimde gider:</p>
+    <pre>13.11.2026-Cuma-14.05 sepet bildirimi düzeltildi -p
+
+Panel Controller ile gönderildi: https://github.com/wreazy-cs/panel-controller</pre>
+    <p><code>-p</code>: Panel Controller'dan gönderildi. Yazar senin git hesabındır.</p>
+    <p><i>Push et</i> önce derle ve doğrulayı çalıştırır; temiz değilse push yapılmaz (<a href="#PC-405" data-go="PC-405">PC-405</a>). Push, panele yüklendi demek değildir.</p>
+  </section>
+
+  <section id="ayarlar" data-group="Ekranlar">
+    <h2>Ayarlar ve Hakkında</h2>
+    <table>
+      <tr><td>Proje</td><td>Proje klasörü, mağaza CDN adresi, slot hedefi (65.000), toplam bütçe (355.000). Her proje için ayrı saklanır.</td></tr>
+      <tr><td>Sistem kontrolü</td><td>Bkz. <a href="#sistem" data-go="sistem">Sistem kontrolü</a>.</td></tr>
+      <tr><td>Dil</td><td>Türkçe ya da İngilizce. Uygulama yeniden açılınca geçerli olur.</td></tr>
+      <tr><td>Görünüm</td><td>Açık ya da koyu tema.</td></tr>
+      <tr><td>Uygulama dosyaları</td><td>Hata günlüğü: <code>%LOCALAPPDATA%\PanelController\error.log</code>.</td></tr>
+    </table>
+    <p>Hakkında sayfasında sürüm notları ve lisans bilgisi var.</p>
+  </section>
+
+  <section id="kaynak-kurallari" data-group="Kod yazarken">
+    <h2>Kaynak dosya kuralları</h2>
+    <p>Her parçanın ilk satırı meta satırıdır:</p>
+    <pre>/*@vt 25 | ARAMA CUBUGU | ezer: skin/css/header.css &gt; #urun_arama_form */</pre>
+    <p><code>25</code> parça numarasıdır, tüm slotlarda tek olmalı. Bir kuralın hangi parçadan geldiğini bulmak için Yayın → Tek adım → <i>İnceleme kopyası</i>, sonra <code>veri/uretilen/okunur/</code> içinde <code>IC-VT-25</code> ara.</p>
+    <table>
+      <tr><th>Kural</th><th>Kod</th></tr>
+      <tr><td>JS kaynağı saf ASCII; Türkçe harf <code>ç</code> gibi yazılır</td><td><a href="#PC-101" data-go="PC-101">PC-101</a></td></tr>
+      <tr><td>HTML karakter kodu yok (<code>&amp;#39;</code>)</td><td><a href="#PC-102" data-go="PC-102">PC-102</a></td></tr>
+      <tr><td>Her karakter windows-1254'te olmalı</td><td><a href="#PC-103" data-go="PC-103">PC-103</a></td></tr>
+      <tr><td>JS parçası <code>;</code> ile biter; satıra yayılan metin ve ters tırnak yok</td><td><a href="#PC-106" data-go="PC-106">PC-106</a>, <a href="#PC-107" data-go="PC-107">PC-107</a></td></tr>
+      <tr><td>Panel kopyasında yorum yok</td><td><a href="#PC-110" data-go="PC-110">PC-110</a></td></tr>
+    </table>
+    <table>
+      <tr><th>Yazma</th><th>Yerine</th></tr>
+      <tr><td><code>≤ ≥</code></td><td><code>&lt;= &gt;=</code></td></tr>
+      <tr><td><code>→ ←</code></td><td><code>-&gt; &lt;-</code></td></tr>
+      <tr><td><code>“ ” ‘ ’</code></td><td><code>" '</code></td></tr>
+    </table>
+  </section>
+
+  <section id="slotlar" data-group="Kod yazarken">
+    <h2>Slotlar</h2>
+    <table>
+      <tr><th>Kaynak klasörü</th><th>Panel slotu</th><th>Nerede yüklenir</th></tr>
+      <tr><td><code>genel</code>, <code>genel-js</code></td><td>Genel</td><td>Her sayfa</td></tr>
+      <tr><td><code>anasayfa</code>, <code>anasayfa-js</code></td><td>Anasayfa</td><td>Ana sayfa</td></tr>
+      <tr><td><code>kategori</code>, <code>kategori-js</code></td><td>Kategori</td><td>Kategori sayfaları</td></tr>
+      <tr><td><code>urun</code>, <code>urun-js</code></td><td>Ürün</td><td>Ürün detayı</td></tr>
+      <tr><td><code>sepet</code>, <code>sepet-js</code></td><td>Sepet</td><td>Sepet sayfası</td></tr>
+    </table>
+    <p>Toplam bütçe 355.000 karakter (<a href="#PC-111" data-go="PC-111">PC-111</a>), slot hedefi 65.000 (<a href="#PC-112" data-go="PC-112">PC-112</a>).</p>
+  </section>
+
+  <section id="onbellek" data-group="Kod yazarken">
+    <h2>Değişiklik görünmüyorsa</h2>
+    <ol class="steps">
+      <li>Sayfada <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>, sonra gizli sekme.</li>
+      <li>Yayın → <i>Canlıyla karşılaştır</i>. <span class="chip ok">aynı</span> ise yükleme doğru, sorun tarayıcı önbelleğinde.</li>
+      <li><span class="chip warn">farklı</span> ise dosya kaydedilmemiş ya da yanlış slota gitmiş olabilir.</li>
+    </ol>
+  </section>
+
+  <section id="islemler" data-group="Sorunlar">
+    <h2>İşlem kartları</h2>
+    <p>Her işlem sağdaki <i>İşlemler</i> panelinde bir kart açar. Kenar rengi sonucu söyler: <span class="chip ok">yeşil</span> başarılı, <span class="chip warn">sarı</span> uyarı, <span class="chip err">kırmızı</span> başarısız. Kartta hata kodu, dosya, <i>Ne yapmalı</i> ve kapalı <i>Ayrıntılı çıktı</i> var. Koda tıklayınca bu kılavuz o satırda açılır.</p>
+  </section>
+
+  <section id="hata-kodlari" data-group="Sorunlar">
+    <h2>Hata kodları</h2>
+    <p>İlk rakam: <b>1</b> derleme, <b>2</b> panel simülasyonu, <b>3</b> canlı site ve yedek, <b>4</b> git, <b>9</b> beklenmeyen.</p>
+    <table id="errors">
+      <tr><th>Kod</th><th>Seviye</th><th>Ne demek</th><th>Ne yapmalı</th></tr>
+      {{ERRORS}}
+    </table>
+  </section>
+
+  <section id="kisayollar" data-group="Sorunlar">
+    <h2>Klavye kısayolları</h2>
+    <table>
+      <tr><td><kbd>F5</kbd></td><td>Yenile ve canlıyla karşılaştır</td></tr>
+      <tr><td><kbd>F1</kbd></td><td>Kılavuzu aç</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>1</kbd> … <kbd>5</kbd></td><td>Menüdeki sayfalar</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd></td><td>Kılavuzda arama</td></tr>
+    </table>
+  </section>
+
+  <section id="sss" data-group="Sorunlar">
+    <h2>Sık sorulanlar</h2>
+    <h3>Push ettim, site değişmedi</h3>
+    <p>Push yalnızca GitHub'a kaydeder. Panele yükleme Yayın → sihirbaz ile yapılır.</p>
+    <h3>Uygulama dosyayı panele neden kendisi yüklemiyor?</h3>
+    <p>PlatinMarket API'sinde tema CSS ve JS dosyaları için uç nokta yok.</p>
+    <h3>Konsolda <code>Unexpected token '}'</code></h3>
+    <p>Giriş yapmış kullanıcıda ana sayfada platformun kendi kodundan gelir. Yalnızca <code>platincdn.com/…/tema/</code> kaynaklı hatalar bizimdir.</p>
+  </section>
+
+  <div class="empty" id="empty">Sonuç yok.</div>
+</div>
+</main>
+</div>
+<script>
+var LABEL_FOUND = ' bölümde bulundu', LABEL_NONE = 'Sonuç yok';
+</script>
+{{SCRIPT}}
+</body>
+</html>

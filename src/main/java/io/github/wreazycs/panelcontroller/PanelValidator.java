@@ -58,7 +58,7 @@ public final class PanelValidator {
             }
             files.forEach(f -> all.addAll(f.errors()));
             if (budgetExceeded()) {
-                all.add(Finding.of(Problem.BUDGET_EXCEEDED, "", total + " / " + budget + " karakter"));
+                all.add(Finding.of(Problem.BUDGET_EXCEEDED, "", total + " / " + budget));
             }
             return all;
         }
@@ -166,7 +166,7 @@ public final class PanelValidator {
 
         if (text.length() > cfg.slotTarget()) {
             warnings.add(Finding.of(Problem.SLOT_OVER_TARGET, name,
-                    text.length() + " karakter, slot hedefi " + cfg.slotTarget() + "'i asiyor"));
+                    text.length() + " / " + cfg.slotTarget()));
         }
 
         if (!js) {

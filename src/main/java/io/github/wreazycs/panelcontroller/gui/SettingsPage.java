@@ -19,16 +19,20 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 
-/** Ayarlar: project folder and store settings, theme, API key and PIN. */
+/** Settings: project folder and store settings, language, theme, system check (and the API key when API is on). */
 final class SettingsPage implements Page {
     private final AppContext ctx;
     private final VaultUi vaultUi;
+    private final Supplier<String> theme;
     private final ScrollPane view;
 
     private final Label folder = Ui.label("", "mono");
@@ -36,64 +40,74 @@ final class SettingsPage implements Page {
     private final TextField slotTarget = numberField();
     private final TextField budget = numberField();
     private final Label cdnResult = Ui.wrapped("", "small");
+    private final ToggleButton light = new ToggleButton(T.t("settings.light"));
+    private final ToggleButton dark = new ToggleButton(T.t("settings.dark"));
+    private final ToggleButton tr = new ToggleButton("Türkçe");
+    private final ToggleButton en = new ToggleButton("English");
+    private final SystemCheckView systemView;
     private final Label keyState = Ui.label("", "strong");
-    private final Button changePin;
-    private final Button removePin;
-    private final Button lock;
-    private final ToggleButton light = new ToggleButton("Açık");
-    private final ToggleButton dark = new ToggleButton("Koyu");
-    private Supplier<String> theme;
-    private SystemCheckView systemView;
     private boolean systemChecked;
 
-    SettingsPage(AppContext ctx, VaultUi vaultUi, Consumer<Path> projectChooser, Consumer<String> themeSetter,
-                 Supplier<String> theme, Runnable lockNow) {
+    SettingsPage(AppContext ctx, VaultUi vaultUi, boolean showKeyCard, Consumer<Path> projectChooser,
+                 Consumer<String> themeSetter, Supplier<String> theme, Runnable lockNow) {
         this.ctx = ctx;
         this.vaultUi = vaultUi;
+        this.theme = theme;
 
         // ---- project
-        Button choose = Ui.button("Klasör seç…", "folder");
+        Button choose = Ui.button(T.t("settings.chooseFolder"), "folder");
         choose.setOnAction(e -> {
             DirectoryChooser dc = new DirectoryChooser();
-            dc.setTitle("Proje klasörü (kaynak/ klasörünü içeren)");
+            dc.setTitle(T.t("settings.chooseFolder.title"));
             if (Files.isDirectory(ctx.cfg.root())) dc.setInitialDirectory(ctx.cfg.root().toFile());
             File f = dc.showDialog(ctx.stage);
             if (f != null) projectChooser.accept(f.toPath());
         });
         folder.setMinWidth(0);
-        HBox.setHgrow(folder, Priority.ALWAYS);
         folder.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(folder, Priority.ALWAYS);
         HBox folderRow = new HBox(10, folder, choose);
         folderRow.setAlignment(Pos.CENTER_LEFT);
 
-        cdn.setPromptText("https://platincdn.com/<mağaza no>/tema/%s");
+        cdn.setPromptText("https://platincdn.com/<no>/tema/%s");
         HBox.setHgrow(cdn, Priority.ALWAYS);
-        Button test = Ui.button("Bağlantıyı dene", "compare");
+        Button test = Ui.button(T.t("settings.cdn.test"), "compare");
         test.setOnAction(e -> testCdn());
-        Button save = Ui.button("Kaydet", "check", "primary");
+        Button save = Ui.button(T.t("settings.save"), "check", "primary");
         save.setOnAction(e -> save());
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(10);
-        grid.add(Ui.label("Mağaza CDN adresi", "strong"), 0, 0);
-        grid.add(new HBox(8, cdn, test), 1, 0);
-        grid.add(Ui.wrapped("Canlı tema dosyalarının adresi; %s dosya adının (genel.css ...) yerine geçer. Yedek ve canlı "
-                + "karşılaştırma bunu kullanır. Mağazanın sitesinde tarayıcıda Kaynağı Görüntüle ile tema/genel.css adresini bulabilirsin.",
-                "hint"), 1, 1);
-        grid.add(cdnResult, 1, 2);
-        grid.add(Ui.label("Slot hedefi", "strong"), 0, 3);
-        grid.add(new HBox(8, slotTarget, Ui.label("karakter (aşılırsa uyarı)", "muted")), 1, 3);
-        grid.add(Ui.label("Toplam bütçe", "strong"), 0, 4);
-        grid.add(new HBox(8, budget, Ui.label("karakter (aşılırsa derleme durur)", "muted")), 1, 4);
-        javafx.scene.layout.ColumnConstraints labels = new javafx.scene.layout.ColumnConstraints();
-        labels.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
-        javafx.scene.layout.ColumnConstraints fields = new javafx.scene.layout.ColumnConstraints();
+        ColumnConstraints labels = new ColumnConstraints();
+        labels.setMinWidth(Region.USE_PREF_SIZE);
+        ColumnConstraints fields = new ColumnConstraints();
         fields.setHgrow(Priority.ALWAYS);
         grid.getColumnConstraints().setAll(labels, fields);
-        VBox project = Ui.card(Ui.cardHeader("Proje",
-                        "Bu ayarlar her proje klasörü için ayrı saklanır; ayrı bir ayar dosyası gerekmez."),
-                folderRow, grid, new HBox(save));
+        grid.add(Ui.label(T.t("settings.cdn"), "strong"), 0, 0);
+        grid.add(new HBox(8, cdn, test), 1, 0);
+        grid.add(Ui.wrapped(T.t("settings.cdn.hint"), "hint"), 1, 1);
+        grid.add(cdnResult, 1, 2);
+        grid.add(Ui.label(T.t("settings.slotTarget"), "strong"), 0, 3);
+        grid.add(new HBox(8, slotTarget, Ui.label(T.t("settings.slotTarget.hint"), "muted")), 1, 3);
+        grid.add(Ui.label(T.t("settings.budget"), "strong"), 0, 4);
+        grid.add(new HBox(8, budget, Ui.label(T.t("settings.budget.hint"), "muted")), 1, 4);
+        VBox project = Ui.card(Ui.cardHeader(T.t("settings.project"), T.t("settings.project.sub")), folderRow, grid, new HBox(save));
+
+        // ---- system check
+        systemView = new SystemCheckView(ctx, () -> ctx.cfg.root());
+        VBox system = Ui.card(Ui.cardHeader(T.t("settings.system"), T.t("settings.system.sub")), systemView);
+
+        // ---- language
+        ToggleGroup langs = new ToggleGroup();
+        for (ToggleButton b : new ToggleButton[] {tr, en}) {
+            b.setToggleGroup(langs);
+            b.getStyleClass().add("btn");
+        }
+        (T.lang().equals("en") ? en : tr).setSelected(true);
+        tr.setOnAction(e -> setLanguage("tr"));
+        en.setOnAction(e -> setLanguage("en"));
+        VBox language = Ui.card(Ui.cardHeader(T.t("settings.language"), T.t("settings.language.sub")), new HBox(8, tr, en));
 
         // ---- appearance
         ToggleGroup g = new ToggleGroup();
@@ -105,43 +119,32 @@ final class SettingsPage implements Page {
         dark.setGraphic(Icons.of("moon", 16));
         light.setOnAction(e -> { light.setSelected(true); themeSetter.accept("light"); });
         dark.setOnAction(e -> { dark.setSelected(true); themeSetter.accept("dark"); });
-        this.theme = theme;
-        (theme.get().equals("dark") ? dark : light).setSelected(true);
-        VBox appearance = Ui.card(Ui.cardHeader("Görünüm", "Tema hemen değişir ve hatırlanır."), new HBox(8, light, dark));
-
-        // ---- key and PIN
-        Button key = Ui.button("Anahtarı gir / değiştir…", "key", "primary");
-        key.setOnAction(e -> vaultUi.keyDialog());
-        changePin = Ui.button("PIN'i değiştir…", "pen");
-        changePin.setOnAction(e -> vaultUi.changePinDialog());
-        removePin = Ui.button("PIN'i kaldır…", "x", "danger");
-        removePin.setOnAction(e -> vaultUi.removePinDialog());
-        lock = Ui.button("Şimdi kilitle", "lock");
-        lock.setOnAction(e -> lockNow.run());
-        javafx.scene.layout.FlowPane keyButtons = new javafx.scene.layout.FlowPane(8, 8, key, changePin, removePin, lock);
-        VBox keys = Ui.card(Ui.cardHeader("API anahtarı ve PIN",
-                        "Anahtar ekrana, günlüğe ya da panoya yazılmaz. 'Bu bilgisayarda hatırla' seçilirse uygulama her açılışta "
-                                + "4 haneli PIN sorar; 5 yanlış girişte kayıtlı anahtar silinir."),
-                keyState, keyButtons);
+        VBox appearance = Ui.card(Ui.cardHeader(T.t("settings.appearance"), T.t("settings.appearance.sub")), new HBox(8, light, dark));
 
         // ---- files
-        Button errors = Ui.button("Hata günlüğünü aç", "notes");
+        Button errors = Ui.button(T.t("settings.errorLog"), "notes");
         errors.setOnAction(e -> {
             if (Files.exists(ErrorLog.file())) {
                 ctx.open(ErrorLog.file());
             } else {
-                Ui.info(ctx.stage, "Hata günlüğü boş", "Henüz beklenmeyen bir hata kaydedilmedi.");
+                Ui.info(ctx.stage, T.t("settings.errorLog.empty.header"), T.t("settings.errorLog.empty.text"));
             }
         });
-        VBox files = Ui.card(Ui.cardHeader("Uygulama dosyaları",
-                        "Kayıtlı anahtar ve hata günlüğü " + ErrorLog.file().getParent() + " altında durur (OneDrive ve git dışında)."),
-                new HBox(errors));
+        VBox files = Ui.card(Ui.cardHeader(T.t("settings.files"), T.t("settings.files.sub", ErrorLog.file())), new HBox(errors));
 
-        systemView = new SystemCheckView(ctx, () -> ctx.cfg.root());
-        VBox system = Ui.card(Ui.cardHeader("Sistem kontrolü",
-                "Java uygulamanın içinde gelir. Git, Node.js ve Python isteğe bağlıdır; her biri bir özelliği açar."), systemView);
-
-        VBox content = new VBox(16, project, system, appearance, keys, files);
+        VBox content = new VBox(16, project, system, language, appearance);
+        if (showKeyCard) {
+            Button key = Ui.button("API…", "key", "primary");
+            key.setOnAction(e -> vaultUi.keyDialog());
+            Button changePin = Ui.button("PIN…", "pen");
+            changePin.setOnAction(e -> vaultUi.changePinDialog());
+            Button removePin = Ui.button("PIN ×", "x", "danger");
+            removePin.setOnAction(e -> vaultUi.removePinDialog());
+            Button lock = Ui.button("Lock", "lock");
+            lock.setOnAction(e -> lockNow.run());
+            content.getChildren().add(Ui.card(Ui.cardHeader("API", null), keyState, new FlowPane(8, 8, key, changePin, removePin, lock)));
+        }
+        content.getChildren().add(files);
         content.setPadding(new Insets(4, 24, 24, 24));
         view = new ScrollPane(content);
         view.setFitToWidth(true);
@@ -155,8 +158,8 @@ final class SettingsPage implements Page {
     }
 
     @Override public String id() { return "settings"; }
-    @Override public String title() { return "Ayarlar"; }
-    @Override public String subtitle() { return "Proje, görünüm ve API anahtarı."; }
+    @Override public String title() { return T.t("settings.title"); }
+    @Override public String subtitle() { return T.t("settings.subtitle"); }
     @Override public String icon() { return "settings"; }
     @Override public Node view() { return view; }
 
@@ -167,21 +170,26 @@ final class SettingsPage implements Page {
         slotTarget.setText(String.valueOf(ctx.settings.slotTarget));
         budget.setText(String.valueOf(ctx.settings.budget));
         (theme.get().equals("dark") ? dark : light).setSelected(true); // the side menu can switch it too
+        keyState.setText(vaultUi.statusText());
         if (!systemChecked) {
             systemChecked = true;
             systemView.check();
         }
-        keyState.setText(vaultUi.statusText());
-        boolean stored = vaultUi.hasStoredKey();
-        changePin.setDisable(!stored);
-        removePin.setDisable(!stored);
-        lock.setDisable(!stored);
+    }
+
+    private void setLanguage(String lang) {
+        (lang.equals("en") ? en : tr).setSelected(true);
+        if (lang.equals(ctx.prefs.get("lang", "tr"))) {
+            return;
+        }
+        ctx.prefs.put("lang", lang);
+        ctx.activity.note("ok", T.t("settings.language.changed"), T.t("settings.language.changedText"));
     }
 
     private void save() {
         String c = cdn.getText().strip();
         if (!c.isEmpty() && (!c.startsWith("https://") || !c.contains("%s"))) {
-            cdnResult.setText("Adres https:// ile başlamalı ve dosya adı yerine %s içermeli.");
+            cdnResult.setText(T.t("settings.cdn.invalid"));
             cdnResult.getStyleClass().setAll("label", "error-text", "small");
             return;
         }
@@ -189,7 +197,7 @@ final class SettingsPage implements Page {
         ctx.settings.slotTarget = parse(slotTarget.getText(), ProjectSettings.DEFAULT_SLOT_TARGET);
         ctx.settings.budget = parse(budget.getText(), ProjectSettings.DEFAULT_BUDGET);
         ctx.settingsChanged();
-        cdnResult.setText("Kaydedildi.");
+        cdnResult.setText(T.t("settings.saved"));
         cdnResult.getStyleClass().setAll("label", "muted", "small");
         ctx.refreshAll();
     }
@@ -206,22 +214,21 @@ final class SettingsPage implements Page {
     private void testCdn() {
         String c = cdn.getText().strip();
         if (!c.startsWith("https://") || !c.contains("%s")) {
-            cdnResult.setText("Adres https:// ile başlamalı ve %s içermeli.");
+            cdnResult.setText(T.t("settings.cdn.invalid"));
             cdnResult.getStyleClass().setAll("label", "error-text", "small");
             return;
         }
         Slot first = ctx.cfg.slots().get(0);
-        cdnResult.setText("Deneniyor: " + first.outputName() + " …");
+        cdnResult.setText(T.t("settings.cdn.testing", first.outputName()));
         cdnResult.getStyleClass().setAll("label", "muted", "small");
         ctx.background.submit(() -> {
             Optional<String> r = new Cdn(c).fetch(first.outputName());
             Platform.runLater(() -> {
                 if (r.isPresent()) {
-                    cdnResult.setText("Çalışıyor: " + first.outputName() + " okundu (" + Ui.number(r.get().length())
-                            + " karakter). Kaydet'e basmayı unutma.");
+                    cdnResult.setText(T.t("settings.cdn.ok", first.outputName(), Ui.number(r.get().length())));
                     cdnResult.getStyleClass().setAll("label", "small");
                 } else {
-                    cdnResult.setText("Okunamadı (PC-302): adres yanlış olabilir ya da internet bağlantısı yok.");
+                    cdnResult.setText(T.t("settings.cdn.fail"));
                     cdnResult.getStyleClass().setAll("label", "error-text", "small");
                 }
             });

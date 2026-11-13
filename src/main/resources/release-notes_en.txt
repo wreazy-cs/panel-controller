@@ -1,0 +1,28 @@
+# Format: "## version | date | title", then "+ added", "* changed", "! fixed". Newest first.
+## 0.7.0 | 2026-11-13 | Simpler interface, two languages
++ Interface and user guide in Turkish and English. Choose the language in Settings.
++ Montserrat font bundled with the app.
+* The menu has only Publish, Restore, Git, Settings and About. Tasks, Tools and API are hidden.
+* Release notes are on the About page.
+* No automatic upload: the PlatinMarket API has no endpoint for theme CSS/JS files. Uploading is done by hand with the wizard.
+## 0.6.0 | 2026-11-13 | System check and installer
++ Windows installer. Java is bundled, no administrator rights needed.
++ System check: Git, Node.js, Python and the project's Python scripts. Missing tools can be installed with winget.
++ First-start setup window.
++ Read-only test calls to the PlatinMarket Reform API.
+## 0.5.0 | 2026-11-13 | Upload workflow
++ Prepare: backup, build, validate. Stops at the first failing step.
++ File table in paste order with same/different state against the live site.
++ Upload wizard: copies the changed files to the clipboard in order.
++ Git page: commit and push. No push unless build and validation are clean.
++ Activity cards, error codes (PC-xxx), in-app user guide, light and dark theme.
+* Settings page instead of a config file.
+! The JS syntax check runs on the file as the panel would save it.
+## 0.4.0 | 2026-11-13 | Logo
++ App logo and desktop shortcut.
+## 0.3.0 | 2026-11-13 | PIN-protected key
++ API key kept in a file protected by a PIN and Windows DPAPI.
+## 0.2.0 | 2026-11-12 | First window
++ JavaFX window.
+## 0.1.0 | 2026-11-12 | Java version
++ Build, validate, back up, compare, restore. Build output is byte-identical to the Python version.

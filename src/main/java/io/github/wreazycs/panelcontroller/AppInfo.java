@@ -1,102 +1,77 @@
 package io.github.wreazycs.panelcontroller;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Name, version, author and release notes: the single source for the About page, the release
- * notes page, the window title and the {@code version} command.
+ * Name, version, author and release notes (release-notes_tr.txt / release-notes_en.txt).
  *
  * <p>Rule: every change that alters behaviour bumps {@link #VERSION} (semantic versioning, beta
- * {@code 0.MINOR.PATCH}: new feature = MINOR, fix only = PATCH) and adds a release at the top of
- * {@link #RELEASES}, in the same commit.
+ * {@code 0.MINOR.PATCH}: new feature = MINOR, fix only = PATCH), the version in pom.xml, and adds
+ * a release at the top of both release note files, in the same commit.
  */
 public final class AppInfo {
     public static final String NAME = "Panel Controller";
-    public static final String VERSION = "0.6.0";
+    public static final String VERSION = "0.7.0";
     public static final String STAGE = "beta";
     public static final String AUTHOR = "Samet Şafak";
     public static final String GITHUB = "https://github.com/wreazy-cs/panel-controller";
-    public static final String TAGLINE = "PlatinMarket mağazaları için yayın, yedek ve kontrol aracı";
-
-    public static final List<String> PURPOSE = List.of(
-            "PlatinMarket, mağazalara yalnızca CSS ve JS ekleme izni veriyor. Kod panele elle yapıştırılıyor; panelde sürüm "
-                    + "geçmişi, yedek, geri alma ve kod doğrulama yok.",
-            "Panel kaydederken kodu bozabiliyor: HTML karakter kodlarını çözüyor, Türkçe karakterleri tek bayta indiriyor "
-                    + "(03.08.2026'da bunun yüzünden sitenin tüm JS'i çalışmadı). Dosyalar bir yıl önbelleklendiği için yüklenen "
-                    + "değişiklik görünmeyebiliyor.",
-            "Panel Controller bu açığı kapatır: kodu küçük parçalar halinde yazdırıp birleştirir, panele gitmeden önce panelin "
-                    + "yapacağı bozmaları taklit ederek doğrular, yüklemeden önce canlı halin yedeğini alır, hangi dosyanın "
-                    + "yüklenmesi gerektiğini ve sırasını gösterir, bozulursa eski yedeğe hızlıca döndürür ve değişiklikleri git "
-                    + "ile kaydeder.");
 
     public record Release(String version, LocalDate date, String title,
                           List<String> added, List<String> changed, List<String> fixed) {}
 
-    /** Newest first. */
-    public static final List<Release> RELEASES = List.of(
-            new Release("0.6.0", LocalDate.of(2026, 11, 13), "API, sistem kontrolü ve kurulum dosyası",
-                    List.of(
-                            "API sayfası: PlatinMarket Reform API'sine (developer.platinmarket.com) yalnızca okuyan istekler. Hazır "
-                                    + "istekler (mağaza bilgisi, döviz kurları, markalar, kategoriler ...); kişisel veri döndüren uçlar "
-                                    + "bilerek yok. Anahtar yalnızca https ile gider, yönlendirme izlenmez, çıktıda her biçimiyle maskelenir; "
-                                    + "yeni bir sunucuya ilk gönderimde onay istenir.",
-                            "API hatası HTTP 200 içinde (error.code) gelse bile yakalanır: PC-710.",
-                            "Genel IP adresini gösteren düğme (anahtarlar IP'ye bağlı oluşturuluyor).",
-                            "Sistem kontrolü (Ayarlar ve ilk açılış): Git, Node.js, Python, winget ve projenin Python betiklerinin "
-                                    + "sözdizimi; eksik araç winget ile kurulabilir (onayı kişi verir).",
-                            "İlk açılışta karşılama penceresi.",
-                            "Windows kurulum dosyası: Java içinde gelir, yönetici izni gerekmez, Başlat menüsü ve masaüstü kısayolu, "
-                                    + "kaldırma desteği (build-installer.ps1)."),
-                    List.of("Kılavuza API ve Sistem kontrolü bölümleri; sayfa kısayolları Ctrl+1 ... Ctrl+9.",
-                            "Bulgu: Reform API'de tema CSS/JS slotları için uç nokta yok; panele yükleme sihirbazla elle kalır."),
-                    List.of()),
-            new Release("0.5.0", LocalDate.of(2026, 11, 13), "Yeni arayüz ve Python Kumanda'nın iş akışı",
-                    List.of(
-                            "Sol menülü yeni arayüz: Yayın, Geri dön, Git, Görevler, Araçlar, Sürüm notları, Hakkında, Ayarlar.",
-                            "Hazırla: yedek, derle ve doğrula tek tıkla, adım göstergesiyle; bir adım başarısız olursa durur.",
-                            "Yayın tablosu: dosyalar yapıştırma sırasıyla (önce sayfa slotları, en son genel), canlıyla AYNI/FARKLI rozetiyle.",
-                            "Yükleme sihirbazı: canlıdan farklı dosyaları sırayla panoya alır, her adımda ne yapılacağını söyler, "
-                                    + "bitince canlıyı yeniden kontrol eder.",
-                            "Git sayfası: değişen dosyaları seçip commit; derle ve doğrula temiz değilse push etmez. "
-                                    + "Commit'ler -p ekiyle ve Panel Controller bağlantısıyla gider.",
-                            "Görevler (tasks/), sayfa önizleme, test tezgahı ve oturum notu.",
-                            "İşlem kartları: düz günlük yerine her işlemin sonucu, hatalar kod numarasıyla.",
-                            "Hata kodları (PC-101 ...) ve uygulama içinde aranabilir kullanım kılavuzu.",
-                            "Açık ve koyu tema.",
-                            "Hakkında ve Sürüm notları sayfaları."),
-                    List.of(
-                            "Ayar dosyası kaldırıldı: mağaza CDN adresi ve sınırlar Ayarlar sayfasında, her proje için ayrı tutulur "
-                                    + "(komut satırındaki --config sürüyor).",
-                            "API anahtarı ve PIN işlemleri Ayarlar sayfasına taşındı.",
-                            "Java 25 ve JavaFX 25 gerekiyor (kılavuzun tarayıcı bileşeni yeni Java sürümlerinde bunu istiyor).",
-                            "Jar dosyasının adı sürümden bağımsız: target/panel-controller.jar.",
-                            "Geri al: 'en son' yedek, o dosyayı içeren en yeni yedeği bulur."),
-                    List.of(
-                            "JS sözdizimi denetimi artık dosyanın panel kaydettikten sonraki halini (windows-1254) denetliyor; "
-                                    + "Python sürümündeki davranış.")),
-            new Release("0.4.0", LocalDate.of(2026, 11, 13), "Logo ve masaüstü kısayolu",
-                    List.of("Uygulama logosu (pencere, görev çubuğu, diyaloglar).",
-                            "Konsol penceresi açmayan masaüstü kısayolu (create-shortcut.ps1)."),
-                    List.of(), List.of("Proje klasöründe kaynak yokken 'Derleme: güncel' yazması.")),
-            new Release("0.3.0", LocalDate.of(2026, 11, 13), "PIN korumalı API anahtarı",
-                    List.of("API anahtarı bellekte ya da isteğe bağlı olarak PIN ve Windows DPAPI ile korunan dosyada.",
-                            "Açılışta kilit ekranı; 5 yanlış PIN'de kayıtlı anahtar silinir."),
-                    List.of(), List.of()),
-            new Release("0.2.0", LocalDate.of(2026, 11, 12), "İlk pencere",
-                    List.of("JavaFX penceresi: durum kartları, slot tablosu, işlem düğmeleri.", "status komutu."),
-                    List.of(), List.of()),
-            new Release("0.1.0", LocalDate.of(2026, 11, 12), "Java'ya taşıma",
-                    List.of("Derle, doğrula, yedek al, karşılaştır, geri al komutları. Derleme çıktısı Python sürümüyle bayt bayt aynı."),
-                    List.of(), List.of()));
+    /** Release notes in Turkish ("tr", the default) or English ("en"), newest first. */
+    public static List<Release> releases(String lang) {
+        String file = "/release-notes_" + ("en".equals(lang) ? "en" : "tr") + ".txt";
+        String text;
+        try (InputStream in = AppInfo.class.getResourceAsStream(file)) {
+            text = in == null ? "" : new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            text = "";
+        }
+        return parse(text);
+    }
 
-    /** The Python predecessor's history (Panel Kumanda, IC Elektronik repository). */
-    public static final List<String> PREDECESSOR = List.of(
-            "0.0.1 (19.09.2026) derle.py, dogrula.py, yedek-al.py, cdn-karsilastir.py: derleme hattı.",
-            "0.0.2 (20.09.2026) tek tıkla yayın hazırlığı; CDN önbelleğini atlama.",
-            "0.0.3 (22.09.2026) yerel test tezgahı.",
-            "0.0.5 (26.09.2026) panel kopyası yorumsuz ve sıkıştırılmış; slotlara paylaştırma.",
-            "0.1.0 – 0.4.1 (11.11.2026) Panel Kumanda penceresi: durum kartları, sıralı kopyalama, git, görevler, API denemesi.");
+    static List<Release> parse(String text) {
+        List<Release> out = new ArrayList<>();
+        String[] head = null;
+        List<String> added = new ArrayList<>();
+        List<String> changed = new ArrayList<>();
+        List<String> fixed = new ArrayList<>();
+        for (String raw : text.split("\n")) {
+            String line = raw.strip();
+            if (line.startsWith("## ")) {
+                if (head != null) {
+                    out.add(release(head, added, changed, fixed));
+                }
+                head = line.substring(3).split("\\|");
+                added = new ArrayList<>();
+                changed = new ArrayList<>();
+                fixed = new ArrayList<>();
+            } else if (head != null && line.length() > 2) {
+                String item = line.substring(2).strip();
+                switch (line.charAt(0)) {
+                    case '+' -> added.add(item);
+                    case '*' -> changed.add(item);
+                    case '!' -> fixed.add(item);
+                    default -> { }
+                }
+            }
+        }
+        if (head != null) {
+            out.add(release(head, added, changed, fixed));
+        }
+        return out;
+    }
+
+    private static Release release(String[] head, List<String> added, List<String> changed, List<String> fixed) {
+        return new Release(head[0].strip(), LocalDate.parse(head[1].strip()), head.length > 2 ? head[2].strip() : "",
+                List.copyOf(added), List.copyOf(changed), List.copyOf(fixed));
+    }
 
     private AppInfo() {}
 

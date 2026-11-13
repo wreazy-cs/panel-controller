@@ -7,7 +7,7 @@
     <groupId>io.github.wreazycs</groupId>
     <artifactId>panel-controller</artifactId>
     <!-- keep in step with AppInfo.VERSION -->
-    <version>0.6.0</version>
+    <version>0.7.0</version>
 
     <properties>
         <!-- JavaFX 24+ ships jdk.jsobject (needed by the guide's WebView); it requires Java 23 or newer -->

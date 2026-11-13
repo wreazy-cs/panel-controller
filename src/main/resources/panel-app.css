@@ -27,7 +27,8 @@
     -fx-accent: -pc-accent;
     -fx-focus-color: -pc-accent;
     -fx-faint-focus-color: #2D65E326;
-    -fx-font-family: "Segoe UI";
+    /* Montserrat is bundled (resources/fonts, SIL OFL); headings use its bold weight */
+    -fx-font-family: "Montserrat";
     -fx-font-size: 13px;
 }
 

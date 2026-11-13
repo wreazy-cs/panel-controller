@@ -73,7 +73,7 @@ public final class Main {
         String cmd = rest.get(0);
         List<String> a = rest.subList(1, rest.size());
         if (cmd.equals("version")) {
-            printVersion(out, a.contains("all") ? AppInfo.RELEASES.size() : 3);
+            printVersion(out, a.contains("all") ? Integer.MAX_VALUE : 3);
             return 0;
         }
         ProjectConfig cfg = ProjectConfig.load(root, configFile);
@@ -206,7 +206,7 @@ public final class Main {
 
     static void printVersion(PrintStream out, int count) {
         out.println(AppInfo.title() + "  -  " + AppInfo.credit());
-        for (AppInfo.Release r : AppInfo.RELEASES.stream().limit(count).toList()) {
+        for (AppInfo.Release r : AppInfo.releases("tr").stream().limit(count).toList()) {
             out.println();
             out.println("v" + r.version() + "  " + r.date() + "  " + r.title());
             r.added().forEach(s -> out.println("  [Eklendi] " + s));

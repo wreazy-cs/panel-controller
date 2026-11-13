@@ -3,6 +3,11 @@ Copyright 2026 wreazy-cs
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
+This product bundles the Montserrat font (src/main/resources/fonts/),
+Copyright 2011 The Montserrat Project Authors
+(https://github.com/JulietaUla/Montserrat), licensed under the SIL Open Font
+License, Version 1.1 (see src/main/resources/fonts/OFL.txt).
+
 "PlatinMarket" is a trademark of its respective owner. It is used in this
 project only to describe which e-commerce platform the tool works with.
 This project is independent and is not affiliated with, endorsed by, or

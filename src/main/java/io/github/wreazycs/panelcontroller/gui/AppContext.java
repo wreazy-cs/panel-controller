@@ -30,13 +30,13 @@ import javafx.stage.Stage;
 final class AppContext {
 
     @FunctionalInterface
-    interface Work<T> {
-        T run(PrintStream out) throws Exception;
+    interface Work<R> {
+        R run(PrintStream out) throws Exception;
     }
 
     @FunctionalInterface
-    interface Done<T> {
-        void accept(ActivityFeed.Entry entry, T result);
+    interface Done<R> {
+        void accept(ActivityFeed.Entry entry, R result);
     }
 
     final Stage stage;
@@ -96,17 +96,16 @@ final class AppContext {
         if (cfg.cdnTemplate() != null) {
             return true;
         }
-        activity.start("Mağaza CDN adresi gerekli").done("err", "Yedek ve canlı karşılaştırma için Ayarlar'da adres girilmeli.",
+        activity.start(T.t("cdn.missing.card")).done("err", T.t("cdn.missing.summary"),
                 List.of(Finding.of(Problem.CDN_NOT_SET, "", "")));
-        if (Ui.confirm(stage, "Mağaza CDN adresi girilmemiş",
-                "Canlı dosyaları okumak için mağazanın CDN adresi gerekiyor.\nAyarlar sayfasına gidilsin mi?", "Ayarlara git")) {
+        if (Ui.confirm(stage, T.t("cdn.missing.header"), T.t("cdn.missing.text"), T.t("publish.goSettings"))) {
             navigator.accept("settings");
         }
         return false;
     }
 
     /** Runs {@code work} off the UI thread, with a card in the activity panel; one job at a time. */
-    <T> void run(String title, Work<T> work, Done<T> done) {
+    <R> void run(String title, Work<R> work, Done<R> done) {
         if (busy.get()) {
             return;
         }
@@ -117,7 +116,7 @@ final class AppContext {
         PrintStream out = new PrintStream(buf, true, StandardCharsets.UTF_8);
         worker.submit(() -> {
             try {
-                T result = work.run(out);
+                R result = work.run(out);
                 out.flush();
                 Platform.runLater(() -> {
                     busy.set(false);
@@ -127,7 +126,7 @@ final class AppContext {
                         done.accept(entry, result);
                     } catch (RuntimeException ex) {
                         ErrorLog.write(title + " (sonuç)", ex);
-                        entry.done("err", "Sonuç gösterilemedi.", List.of(Finding.of(Problem.UNEXPECTED, "", ex.toString())));
+                        entry.done("err", T.t("job.resultError"), List.of(Finding.of(Problem.UNEXPECTED, "", ex.toString())));
                     }
                     refreshAll();
                 });
@@ -140,7 +139,7 @@ final class AppContext {
                     busy.set(false);
                     busyText.set("");
                     entry.setRaw(buf.toString(StandardCharsets.UTF_8));
-                    entry.done("err", "İşlem tamamlanamadı.", List.of(f));
+                    entry.done("err", T.t("job.failed"), List.of(f));
                     refreshAll();
                 });
             }

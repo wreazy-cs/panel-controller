@@ -1,6 +1,8 @@
 package io.github.wreazycs.panelcontroller.gui;
 
 import io.github.wreazycs.panelcontroller.AppInfo;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -12,53 +14,70 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
-/** Hakkında: who made the app, version, licence, components. */
+/** About: who made the app, what it does, release notes, licence. */
 final class AboutPage implements Page {
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private final ScrollPane view;
 
     AboutPage(AppContext ctx) {
         ImageView logo = new ImageView(new Image(AboutPage.class.getResource("/icons/panel-controller-128.png").toExternalForm()));
-        logo.setFitWidth(88);
-        logo.setFitHeight(88);
-
+        logo.setFitWidth(80);
+        logo.setFitHeight(80);
         Hyperlink github = new Hyperlink(AppInfo.GITHUB);
         github.setOnAction(e -> ctx.openUrl(AppInfo.GITHUB));
-        Button guide = Ui.button("Kullanım kılavuzunu aç", "guide", "primary");
+        Button guide = Ui.button(T.t("about.openGuide"), "guide", "primary");
         guide.setOnAction(e -> ctx.openGuide(""));
-
-        VBox head = new VBox(8, logo, Ui.label(AppInfo.NAME, "page-title"),
-                new HBox(8, Ui.chip("v" + AppInfo.VERSION, "info"), Ui.chip(AppInfo.STAGE, "")),
-                Ui.label(AppInfo.TAGLINE, "muted"),
-                Ui.label(AppInfo.credit(), "section-title"),
-                github, guide);
+        HBox version = new HBox(8, Ui.chip("v" + AppInfo.VERSION, "info"), Ui.chip(AppInfo.STAGE, ""));
+        version.setAlignment(Pos.CENTER);
+        VBox head = new VBox(8, logo, Ui.label(AppInfo.NAME, "page-title"), version, Ui.label(T.t("about.tagline"), "muted"),
+                Ui.label(T.t("about.madeBy", AppInfo.AUTHOR), "section-title"), github, guide);
         head.setAlignment(Pos.CENTER);
-        ((HBox) head.getChildren().get(2)).setAlignment(Pos.CENTER);
         VBox top = Ui.card(head);
-        top.setAlignment(Pos.CENTER);
-        top.setPadding(new Insets(28));
+        top.setPadding(new Insets(24));
 
-        VBox purpose = Ui.card(Ui.cardHeader("Ne işe yarar", null));
-        AppInfo.PURPOSE.forEach(p -> purpose.getChildren().add(Ui.wrapped(p)));
+        VBox what = Ui.card(Ui.cardHeader(T.t("about.what"), null),
+                Ui.wrapped(T.t("about.purpose.1")), Ui.wrapped(T.t("about.purpose.2")), Ui.wrapped(T.t("about.purpose.3")));
 
-        VBox legal = Ui.card(Ui.cardHeader("Lisans ve bileşenler", null),
-                Ui.wrapped("Panel Controller, Apache License 2.0 ile yayınlanır."),
-                Ui.wrapped("Kullanılan açık kaynak bileşenler: OpenJFX (arayüz, GPL v2 + Classpath Exception), "
-                        + "JNA (Windows DPAPI erişimi, Apache 2.0), JUnit 5 (yalnızca testlerde)."),
-                Ui.wrapped("\"PlatinMarket\" adı sahibinin markasıdır. Bu proje bağımsızdır ve PlatinMarket ile resmi bir bağı yoktur.",
-                        "muted"));
+        VBox notes = Ui.card(Ui.cardHeader(T.t("about.notes"), null));
+        for (AppInfo.Release r : AppInfo.releases(T.lang())) {
+            HBox rh = new HBox(10, Ui.chip("v" + r.version(), r.version().equals(AppInfo.VERSION) ? "info" : ""),
+                    Ui.label(r.title(), "strong"), Ui.spacer(), Ui.label(r.date().format(DAY), "muted", "small"));
+            rh.setAlignment(Pos.CENTER_LEFT);
+            VBox one = new VBox(6, rh);
+            section(one, T.t("about.added"), "ok", r.added());
+            section(one, T.t("about.changed"), "info", r.changed());
+            section(one, T.t("about.fixed"), "warn", r.fixed());
+            one.setPadding(new Insets(0, 0, 8, 0));
+            notes.getChildren().add(one);
+        }
 
-        VBox content = new VBox(16, top, purpose, legal);
+        VBox legal = Ui.card(Ui.cardHeader(T.t("about.legal"), null),
+                Ui.wrapped(T.t("about.legal.1")), Ui.wrapped(T.t("about.legal.2")), Ui.wrapped(T.t("about.legal.3"), "muted"));
+
+        VBox content = new VBox(16, top, what, notes, legal);
         content.setPadding(new Insets(4, 24, 24, 24));
-        content.setMaxWidth(820);
+        content.setMaxWidth(860);
         VBox center = new VBox(content);
         center.setAlignment(Pos.TOP_CENTER);
         view = new ScrollPane(center);
         view.setFitToWidth(true);
     }
 
+    private static void section(VBox box, String title, String kind, List<String> items) {
+        if (items.isEmpty()) {
+            return;
+        }
+        box.getChildren().add(Ui.chip(title, kind));
+        for (String s : items) {
+            HBox h = new HBox(8, Ui.label("•", "muted"), Ui.wrapped(s));
+            h.setAlignment(Pos.TOP_LEFT);
+            box.getChildren().add(h);
+        }
+    }
+
     @Override public String id() { return "about"; }
-    @Override public String title() { return "Hakkında"; }
-    @Override public String subtitle() { return AppInfo.credit() + "."; }
+    @Override public String title() { return T.t("about.title"); }
+    @Override public String subtitle() { return T.t("about.subtitle"); }
     @Override public String icon() { return "about"; }
     @Override public Node view() { return view; }
     @Override public void refresh() { }

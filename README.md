@@ -2,30 +2,49 @@
 
 # Panel Controller
 
-Desktop and command line tool for PlatinMarket-based online stores (unofficial, not affiliated).
-Made by Samet Şafak.
+Checks and git for PlatinMarket store themes (unofficial, not affiliated). Made by Samet Şafak.
 
-PlatinMarket lets store owners add custom CSS and JS only by pasting code into the admin panel.
-There is no backup, no version history and no validation, and the panel can corrupt code on save.
-Panel Controller makes the upload workflow safe:
+[Türkçe](#türkçe) · [Download](https://github.com/wreazy-cs/panel-controller/releases/latest)
 
-- **prepare**: back up the live files, build the small source pieces into the panel files, and
-  simulate what the panel does on save; stop at the first problem
-- **compare** with the live site and **paste in the right order** with a step-by-step wizard
-  (page slots first, the general slot last)
-- **restore** an earlier live version to the clipboard when something breaks
-- **commit and push** with git, refusing to push when build or validation is not clean
+PlatinMarket stores get custom CSS and JS only by pasting code into the admin panel. There is no
+backup, no history and no validation, and the panel can corrupt code on save. Panel Controller:
 
-> **Status: 0.6 beta.** The user interface is in Turkish.
+- backs up the live files
+- builds the small source pieces into the files the panel accepts
+- simulates what the panel does on save and stops at the first problem
+- compares local files with the live site and shows which file to paste, in which order
+- copies an earlier live version back to the clipboard
+- commits and pushes the project with git (refuses to push when build or validation is not clean)
 
-## Install (end users)
+**Uploading stays manual.** The PlatinMarket API (Reform API) has no endpoint for the theme CSS and JS
+files, so the app cannot send a file to the panel. It copies the files to the clipboard in order.
 
-Run `Panel Controller-<version>.exe`. It installs per user (no administrator rights), adds a desktop
-and Start menu shortcut, and **brings its own Java**, so nothing else is required. On first start a
-welcome window shows the system check: Git (Git page), Node.js (JS syntax check) and Python (test bench,
-project scripts) are optional; a missing one can be installed with winget from there.
+> **Status: 0.7 beta.** Interface and user guide in Turkish and English (Settings → Language).
 
-## Build (developers)
+## Install
+
+Download `Panel Controller-<version>.exe` from
+[Releases](https://github.com/wreazy-cs/panel-controller/releases) and run it. It installs per user
+(no administrator rights), adds desktop and Start menu shortcuts and brings its own Java.
+Git, Node.js and Python are optional; Settings → System check shows what is missing.
+
+First start: Settings → choose the project folder (the one that contains `kaynak/`), enter the store's
+CDN address (`https://platincdn.com/<store no>/tema/%s`), Save.
+
+## The window
+
+| Page | |
+|---|---|
+| Publish | Status cards, Prepare (backup + build + validate), file table in paste order, upload wizard |
+| Restore | Backups, newest first; copy a file back to the clipboard |
+| Git | Pick changed files, commit, push |
+| Settings | Project folder, CDN address, limits, language, theme, system check |
+| About | What the app does, release notes, licence |
+
+Results appear as cards in the Activity panel. Problems carry a code (`PC-101` ...); clicking it opens
+the user guide at that code. Shortcuts: `F5` refresh and compare, `F1` guide, `Ctrl+1` ... `Ctrl+5` pages.
+
+## Build
 
 Requirements: JDK 25 or newer, Maven.
 
@@ -35,41 +54,12 @@ powershell -ExecutionPolicy Bypass -File create-shortcut.ps1      # developer sh
 powershell -ExecutionPolicy Bypass -File build-installer.ps1      # dist\Panel Controller-<version>.exe
 ```
 
-`build-installer.ps1` needs WiX Toolset 3.14 on the PATH for the `.exe`/`.msi`
-(`-Type app-image` builds a runnable folder without WiX). Do not run `mvn package` while the
-developer build is open: it replaces the jar under the running app. The installed version is not affected.
-`run-gui.cmd` starts the developer build with a console that shows errors.
+`build-installer.ps1` needs WiX Toolset 3.14 on the PATH (`-Type app-image` works without it).
+Do not run `mvn package` while the developer build is open: it replaces the jar under the running app.
 
-On first start choose the project folder (the one that contains `kaynak/`) and enter the store's CDN
-address under **Ayarlar** (settings). Settings are kept per project; no config file is needed.
-
-## The window
-
-| Page | What it is for |
-|---|---|
-| Yayın | Status cards, Prepare with a step indicator, file table in paste order with live state, upload wizard |
-| Geri dön | Backups, newest first; copy a file back to the clipboard |
-| Git | Pick changed files, commit (`13.11.2026-Persembe-14.05 message -p` + link to this app), push |
-| Görevler | The project's `tasks/` folder by state |
-| Araçlar | Page preview, local test bench (127.0.0.1 only), session notes |
-| API | Read-only calls to the PlatinMarket Reform API (store info, exchange rates, brands, categories ...) |
-| Sürüm notları | What the app is for and what changed in each version |
-| Hakkında | Author, version, licence, components |
-| Ayarlar | Project folder, CDN address, limits, theme (light/dark), API key and PIN |
-
-Results appear as cards in the **İşlemler** panel instead of a log. Problems carry a code
-(`PC-101` ... `PC-901`); clicking it opens the in-app **user guide** at that code. The guide has
-searchable headings, diagrams and the full error table (generated from `Problem.java`).
-
-Shortcuts: `F5` refresh and compare, `F1` guide, `Ctrl+1` ... `Ctrl+9` pages.
-
-## PlatinMarket API
-
-The Reform API is documented at developer.platinmarket.com:
-`https://developer.platinmarket.com/reform/<controller>/<action>.json?access_token=<key>`. The key is
-created in the store panel under Araçlar > API Anahtarları and is tied to an IP address. Errors come back
-as HTTP 200 with `response.error.code` set; the app reports them as PC-710. **The API has no endpoints for
-the theme CSS/JS slots**, so uploading stays manual (the upload wizard).
+Texts live in `src/main/resources/i18n/messages_tr.properties` and `messages_en.properties`, the guide in
+`guide/guide_tr.html` and `guide_en.html`, release notes in `release-notes_tr.txt` and `release-notes_en.txt`.
+`PanelApp.EXTRA_PAGES` turns the hidden pages (Tasks, Tools, API, API key) back on.
 
 ## Project layout
 
@@ -77,9 +67,6 @@ the theme CSS/JS slots**, so uploading stays manual (the upload wizard).
 <root>/kaynak/<slot>/*.css|*.js   source pieces (first line: /*@vt <no> | <title> | ezer: <what it overrides> */)
 <root>/cikti/                     files to paste into the panel
 <root>/veri/yedek/<stamp>/        backups of the live files
-<root>/veri/sayfalar/*.html       panel page contents (preview)
-<root>/veri/oturumlar/            session notes
-<root>/tasks/                     tasks: <date>_<slug>_<status>.md
 ```
 
 ## Command line
@@ -90,56 +77,50 @@ java -jar target/panel-controller.jar --root <project dir> --config <file> <comm
 
 | Command | What it does |
 |---|---|
-| `prepare` | Backup + build + validate; stops at the first failure, then prints the paste order. |
-| `build [--readable\|--commented] [slot...]` | Builds the panel files. `--readable` / `--commented` make review copies that are never pasted. |
-| `validate` | Panel simulation: HTML entities, windows-1254 round trip, budget, JS syntax, CSS balance, leftover comments. |
-| `check` | `build` + `validate`. |
-| `backup` | Downloads the live files. Fails if any file is missing, so you never upload without a backup. |
-| `compare [--dir d]` | Diffs local files against the live CDN (cache-busting query on every request). |
-| `order` | Files to paste, in order. |
-| `status` | Slot sizes, whether output is current, backup age, git state. |
-| `backups` | Lists backups, newest first. |
-| `copy <file>` | Copies an output file to the clipboard. |
-| `restore <stamp\|latest> <file>` | Copies a backed-up file to the clipboard for pasting back. |
-| `tasks [all]` | Active tasks. |
-| `note <name>` | Opens today's session note with the start time. |
-| `version` | Version and release notes. |
+| `prepare` | Backup + build + validate; stops at the first failure, then prints the paste order |
+| `build [--readable\|--commented] [slot...]` | Builds the panel files |
+| `validate` | Panel simulation: HTML entities, windows-1254, budget, JS syntax, CSS balance, comments |
+| `check` | `build` + `validate` |
+| `backup` | Downloads the live files |
+| `compare [--dir d]` | Compares local files with the live CDN |
+| `order` | Files to paste, in order |
+| `status` | Slot sizes, output state, backup age, git state |
+| `backups` | Lists backups |
+| `copy <file>` | Copies an output file to the clipboard |
+| `restore <stamp\|latest> <file>` | Copies a backed-up file to the clipboard |
+| `version` | Version and release notes |
 
-The command line reads the CDN address from a properties file (`--config`, see
-[panel-controller.properties.example](panel-controller.properties.example)). There is deliberately no
-command that touches the API key.
+The CDN address comes from a properties file (`--config`, see
+[panel-controller.properties.example](panel-controller.properties.example)).
 
-## API key
+---
 
-Entered under **Ayarlar**. It is never written to the screen, the log or the clipboard; only its last
-four characters are shown.
+## Türkçe
 
-- **"Remember" unticked:** kept in memory only, gone when the app closes.
-- **"Remember" ticked:** you set a 4-digit PIN first. The key is stored in
-  `%LOCALAPPDATA%\PanelController\vault.bin` and the app asks for the PIN on every start.
-- Change PIN, remove PIN (deletes the stored key), lock now: also under Ayarlar.
-- **Forgot the PIN:** "PIN'imi unuttum" on the lock screen deletes the stored key; enter it again.
+PlatinMarket mağaza temaları için kontrol ve git aracı (resmî değildir). Samet Şafak tarafından geliştirildi.
 
-How it is protected: AES-256-GCM with a key derived from the PIN (PBKDF2-HMAC-SHA256, 600,000 rounds,
-random salt), wrapped in Windows DPAPI (only your Windows account on this computer can open it), file
-access limited to the owner, stored outside OneDrive and git. 5 wrong PINs delete the stored key.
+PlatinMarket'te özel CSS ve JS yalnızca yönetim paneline kod yapıştırarak eklenir. Yedek, geçmiş ve
+denetim yoktur; panel kaydederken kodu bozabilir. Panel Controller:
 
-Limits, stated plainly: 4 digits are 10,000 combinations. Software already running as your Windows
-user can bypass the attempt counter. The PIN stops someone who sits down at the app; it does not stop
-malware on your account.
+- canlı dosyaları yedekler
+- küçük kaynak parçalarını panelin kabul ettiği dosyalara derler
+- panelin kayıtta yaptığını taklit eder, ilk sorunda durur
+- yerel dosyaları canlıyla karşılaştırır, hangi dosyanın hangi sırayla yapıştırılacağını gösterir
+- eski bir canlı sürümü panoya geri kopyalar
+- projeyi git ile commit edip gönderir (derleme veya doğrulama temiz değilse göndermez)
 
-## Roadmap
+**Yükleme elle yapılır.** PlatinMarket API'sinde (Reform API) tema CSS ve JS dosyaları için uç nokta
+yoktur; uygulama panele dosya gönderemez, dosyaları sırayla panoya kopyalar.
 
-1. ~~Core library and command line~~
-2. ~~Desktop interface~~
-3. ~~API key storage (PIN + DPAPI)~~
-4. ~~Upload workflow from the Python predecessor: prepare, paste order, wizard, git, tasks, tools~~
-5. ~~Read-only API calls, system check, Windows installer~~
-6. API features beyond probing (e.g. low-stock report, product checks)
+**Kurulum:** [Releases](https://github.com/wreazy-cs/panel-controller/releases) sayfasından
+`Panel Controller-<sürüm>.exe` dosyasını indirip çalıştırın. Yönetici izni ve Java gerekmez.
+İlk açılışta Ayarlar → proje klasörünü seçin (`kaynak/` klasörünü içeren), mağaza CDN adresini girin, Kaydedin.
+Dil Ayarlar'dan seçilir; uygulama yeniden başlatılınca uygulanır.
 
 ## License
 
-Apache License 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Apache License 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). Montserrat font: SIL Open Font
+License 1.1 ([OFL.txt](src/main/resources/fonts/OFL.txt)).
 
-"PlatinMarket" is a trademark of its respective owner. This project is
-independent and has no official connection to it.
+"PlatinMarket" is a trademark of its respective owner. This project is independent and has no
+official connection to it.

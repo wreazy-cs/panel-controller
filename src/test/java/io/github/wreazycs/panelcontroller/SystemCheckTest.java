@@ -20,16 +20,17 @@ class SystemCheckTest {
 
     @Test
     void missingToolIsReportedWithItsPackage() {
-        SystemCheck.Item i = SystemCheck.tool("Yok", "deneme", List.of("surely-not-a-command-xyz", "--version"), 1, 0, "Some.Package");
+        SystemCheck.Item i = SystemCheck.tool("x", "Yok", List.of("surely-not-a-command-xyz", "--version"), 1, 0, "Some.Package");
         assertEquals(SystemCheck.State.MISSING, i.state());
         assertEquals("Some.Package", i.wingetId());
     }
 
     @Test
     void oldVersionIsDetected() {
-        // "java -version" prints e.g. 27; asking for 999 must say OLD
-        SystemCheck.Item i = SystemCheck.tool("Java", "deneme", List.of("java", "--version"), 999, 0, null);
+        // "java --version" prints e.g. "java 27 2026-09-15"; asking for 999 must say OLD
+        SystemCheck.Item i = SystemCheck.tool("java", "Java", List.of("java", "--version"), 999, 0, null);
         assertEquals(SystemCheck.State.OLD, i.state());
+        assertEquals("999.0", i.minimum());
     }
 
     @Test
@@ -39,11 +40,13 @@ class SystemCheckTest {
         }
         Path arac = Files.createDirectories(dir.resolve("arac"));
         Files.writeString(arac.resolve("iyi.py"), "print('ok')\n");
-        assertEquals(SystemCheck.State.OK, SystemCheck.projectScripts(dir, true).state());
+        SystemCheck.Item good = SystemCheck.projectScripts(dir, true);
+        assertEquals(SystemCheck.State.OK, good.state());
+        assertEquals("1", good.info());
         Files.writeString(arac.resolve("bozuk.py"), "def x(:\n    pass\n");
         SystemCheck.Item bad = SystemCheck.projectScripts(dir, true);
         assertEquals(SystemCheck.State.PROBLEM, bad.state());
-        assertTrue(bad.detail().contains("bozuk.py"), bad.detail());
+        assertTrue(bad.info().contains("bozuk.py"), bad.info());
         assertTrue(Files.notExists(arac.resolve("__pycache__")), "check must not write anything");
     }
 

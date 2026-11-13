@@ -7,14 +7,15 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import javafx.concurrent.Worker;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.web.WebView;
 
 /**
- * The user guide in its own tab. The page is an HTML file with searchable headings, diagrams and
- * the error code table, which is generated from {@link Problem} so it always matches the app.
+ * The user guide in its own tab (guide_tr.html / guide_en.html). The error code table is generated
+ * from {@link Problem} and the language files, so it always matches the app.
  */
 final class GuideTab {
     private final TabPane tabs;
@@ -61,16 +62,17 @@ final class GuideTab {
                 pending = "";
             }
         });
+        String html = html(T.lang());
         try {
-            Path file = ErrorLog.file().getParent().resolve("guide.html");
+            Path file = ErrorLog.file().getParent().resolve("guide_" + T.lang() + ".html");
             Files.createDirectories(file.getParent());
-            Files.writeString(file, html(), StandardCharsets.UTF_8);
+            Files.writeString(file, html, StandardCharsets.UTF_8);
             web.getEngine().load(file.toUri().toString());
         } catch (IOException e) {
-            ErrorLog.write("kılavuz", e);
-            web.getEngine().loadContent(html());
+            ErrorLog.write("guide", e);
+            web.getEngine().loadContent(html);
         }
-        tab = new Tab("Kullanım kılavuzu", web);
+        tab = new Tab(T.t("tab.guide"), web);
         tab.setGraphic(Icons.of("guide", 14));
         tab.setOnClosed(e -> {
             tab = null;
@@ -87,53 +89,88 @@ final class GuideTab {
         }
     }
 
-    static String html() {
+    /** The guide page in the given language, with fonts, version and error table filled in. */
+    static String html(String lang) {
+        String file = "/guide/guide_" + ("en".equals(lang) ? "en" : "tr") + ".html";
         String template;
-        try (InputStream in = GuideTab.class.getResourceAsStream("/guide/guide.html")) {
+        try (InputStream in = GuideTab.class.getResourceAsStream(file)) {
             template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException | NullPointerException e) {
-            return "<p>Kılavuz bulunamadı.</p>";
+            return "<p>Guide not found.</p>";
         }
-        return template.replace("{{VERSION}}", AppInfo.VERSION)
+        String script;
+        try (InputStream in = GuideTab.class.getResourceAsStream("/guide/guide.js")) {
+            script = "<script>\n" + new String(in.readAllBytes(), StandardCharsets.UTF_8) + "</script>";
+        } catch (IOException | NullPointerException e) {
+            script = "";
+        }
+        return template.replace("{{FONTS}}", fontFaces())
+                .replace("{{SCRIPT}}", script)
+                .replace("{{VERSION}}", AppInfo.VERSION)
                 .replace("{{AUTHOR}}", AppInfo.AUTHOR)
-                .replace("{{ERRORS}}", errorRows());
+                .replace("{{ERRORS}}", errorRows(lang));
     }
 
-    /** The error table, grouped by the first digit of the code. */
-    static String errorRows() {
+    /** Error groups shown in the guide (API, tools and key codes only when those pages are on). */
+    static boolean shownGroup(char g) {
+        return PanelApp.EXTRA_PAGES || g == '1' || g == '2' || g == '3' || g == '4' || g == '9';
+    }
+
+    static String errorRows(String lang) {
         StringBuilder sb = new StringBuilder();
+        boolean en = "en".equals(lang);
         char group = ' ';
         for (Problem p : Problem.values()) {
             char g = p.code().charAt(3);
+            if (!shownGroup(g)) {
+                continue;
+            }
             if (g != group) {
                 group = g;
-                sb.append("<tr class=\"err-group\"><td colspan=\"4\">").append(groupName(g)).append("</td></tr>\n");
+                sb.append("<tr class=\"err-group\"><td colspan=\"4\">").append(groupName(g, en)).append("</td></tr>\n");
             }
             String[] sev = switch (p.severity()) {
-                case ERROR -> new String[] {"err", "Hata"};
-                case WARNING -> new String[] {"warn", "Uyarı"};
-                case INFO -> new String[] {"info", "Bilgi"};
+                case ERROR -> new String[] {"err", en ? "Error" : "Hata"};
+                case WARNING -> new String[] {"warn", en ? "Warning" : "Uyarı"};
+                case INFO -> new String[] {"info", en ? "Info" : "Bilgi"};
             };
             sb.append("<tr class=\"code-row\" id=\"").append(p.code()).append("\">")
                     .append("<td><code>").append(p.code()).append("</code></td>")
                     .append("<td><span class=\"chip ").append(sev[0]).append("\">").append(sev[1]).append("</span></td>")
-                    .append("<td><b>").append(esc(p.title())).append("</b><br>").append(esc(p.meaning())).append("</td>")
-                    .append("<td>").append(esc(p.fix())).append("</td></tr>\n");
+                    .append("<td><b>").append(esc(T.title(p))).append("</b><br>").append(esc(T.meaning(p))).append("</td>")
+                    .append("<td>").append(esc(T.fix(p))).append("</td></tr>\n");
         }
         return sb.toString();
     }
 
-    private static String groupName(char g) {
+    private static String groupName(char g, boolean en) {
         return switch (g) {
-            case '1' -> "1xx · Derleme (kaynak/ → cikti/)";
-            case '2' -> "2xx · Panel simülasyonu (doğrula)";
-            case '3' -> "3xx · Canlı site ve yedek";
+            case '1' -> en ? "1xx · Build (kaynak/ → cikti/)" : "1xx · Derleme (kaynak/ → cikti/)";
+            case '2' -> en ? "2xx · Panel simulation (validate)" : "2xx · Panel simülasyonu (doğrula)";
+            case '3' -> en ? "3xx · Live site and backup" : "3xx · Canlı site ve yedek";
             case '4' -> "4xx · Git";
-            case '5' -> "5xx · API anahtarı";
-            case '6' -> "6xx · Araçlar";
-            case '7' -> "7xx · API denemesi";
-            default -> "9xx · Beklenmeyen";
+            case '5' -> en ? "5xx · API key" : "5xx · API anahtarı";
+            case '6' -> en ? "6xx · Tools" : "6xx · Araçlar";
+            case '7' -> "7xx · API";
+            default -> en ? "9xx · Unexpected" : "9xx · Beklenmeyen";
         };
+    }
+
+    /** The bundled Montserrat, embedded so the guide looks like the app without any network access. */
+    private static String fontFaces() {
+        StringBuilder css = new StringBuilder();
+        String[][] faces = {{"Regular", "400"}, {"SemiBold", "600"}, {"Bold", "700"}};
+        for (String[] f : faces) {
+            try (InputStream in = GuideTab.class.getResourceAsStream("/fonts/Montserrat-" + f[0] + ".ttf")) {
+                if (in == null) continue;
+                css.append("@font-face{font-family:'Montserrat';font-weight:").append(f[1])
+                        .append(";src:url(data:font/ttf;base64,").append(Base64.getEncoder().encodeToString(in.readAllBytes()))
+                        .append(") format('truetype');}\n");
+            } catch (IOException e) {
+                ErrorLog.write("guide font", e);
+            }
+        }
+        return css.toString();
     }
 
     private static String esc(String s) {

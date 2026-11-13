@@ -1,0 +1,28 @@
+# Biçim: "## sürüm | tarih | başlık", sonra "+ eklendi", "* değişti", "! düzeltildi". En yeni üstte.
+## 0.7.0 | 2026-11-13 | Sade arayüz, iki dil
++ Arayüz ve kullanım kılavuzu Türkçe ve İngilizce. Dil Ayarlar'dan seçilir.
++ Montserrat yazı tipi uygulamanın içinde.
+* Menüde yalnızca Yayın, Geri dön, Git, Ayarlar ve Hakkında var. Görevler, Araçlar ve API gizlendi.
+* Sürüm notları Hakkında sayfasında.
+* Otomatik yükleme yok: PlatinMarket API'sinde tema CSS/JS dosyaları için uç nokta bulunmuyor. Yükleme sihirbazla elle yapılır.
+## 0.6.0 | 2026-11-13 | Sistem kontrolü ve kurulum dosyası
++ Windows kurulum dosyası. Java içinde gelir, yönetici izni gerekmez.
++ Sistem kontrolü: Git, Node.js, Python ve projenin Python betikleri. Eksik araç winget ile kurulabilir.
++ İlk açılışta kurulum penceresi.
++ PlatinMarket Reform API'sine okuma denemesi.
+## 0.5.0 | 2026-11-13 | Yükleme akışı
++ Hazırla: yedek, derle, doğrula. Bir adım başarısız olursa durur.
++ Dosya tablosu yapıştırma sırasıyla ve canlıyla aynı/farklı durumuyla.
++ Yükleme sihirbazı: farklı dosyaları sırayla panoya alır.
++ Git sayfası: commit ve push. Derleme ve doğrulama temiz değilse push yapılmaz.
++ İşlem kartları, hata kodları (PC-xxx), uygulama içi kılavuz, açık ve koyu tema.
+* Ayar dosyası yerine Ayarlar sayfası.
+! JS sözdizimi denetimi dosyanın panel kaydettikten sonraki halini denetler.
+## 0.4.0 | 2026-11-13 | Logo
++ Uygulama logosu ve masaüstü kısayolu.
+## 0.3.0 | 2026-11-13 | PIN korumalı anahtar
++ API anahtarı PIN ve Windows DPAPI ile korunan dosyada.
+## 0.2.0 | 2026-11-12 | İlk pencere
++ JavaFX penceresi.
+## 0.1.0 | 2026-11-12 | Java sürümü
++ Derle, doğrula, yedek al, karşılaştır, geri al. Derleme çıktısı Python sürümüyle bayt bayt aynı.

@@ -172,7 +172,12 @@ class FeaturesTest {
 
     @Test
     void releaseNotesStartWithCurrentVersion() {
-        assertEquals(AppInfo.VERSION, AppInfo.RELEASES.get(0).version());
+        for (String lang : List.of("tr", "en")) {
+            List<AppInfo.Release> r = AppInfo.releases(lang);
+            assertEquals(AppInfo.VERSION, r.get(0).version(), lang);
+            assertEquals(AppInfo.releases("tr").size(), r.size(), "same releases in both languages");
+            assertFalse(r.get(0).added().isEmpty());
+        }
         assertEquals("Samet Şafak", AppInfo.AUTHOR);
     }
 }

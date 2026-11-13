@@ -136,7 +136,7 @@ public final class Builder {
                 outputs.add(new SlotOutput(slot, pieces.size(), text.length(), pct, over));
                 if (over) {
                     warnings.add(Finding.of(Problem.SLOT_OVER_TARGET, slot.outputName(),
-                            text.length() + " karakter, hedef " + cfg.slotTarget()));
+                            text.length() + " / " + cfg.slotTarget()));
                 }
                 out.printf(Locale.ROOT, "  %-14s <- %2d parca   %7d karakter  %%%5.1f   (slot: %s)%s%n",
                         slot.outputName(), pieces.size(), text.length(), pct, slot.panelName(),

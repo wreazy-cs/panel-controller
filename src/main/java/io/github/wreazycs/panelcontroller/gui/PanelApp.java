@@ -5,10 +5,13 @@ import io.github.wreazycs.panelcontroller.Comparer;
 import io.github.wreazycs.panelcontroller.vault.KeySession;
 import io.github.wreazycs.panelcontroller.vault.KeyVault;
 import io.github.wreazycs.panelcontroller.vault.Protector;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.prefs.Preferences;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -21,6 +24,9 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Tab;
@@ -37,14 +43,21 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.util.Duration;
 
-/** The desktop window: side menu, pages, activity panel, guide tab, lock screen. */
+/** The desktop window: side menu, pages, activity panel, guide tab. */
 public final class PanelApp extends Application {
 
-    /** -Dpanelcontroller.prefs=<name> keeps settings in a separate node (used by tests, so real settings stay untouched). */
+    /**
+     * Tasks, Tools and the API page (with the key and the lock screen) are kept in the code but not
+     * shown: the PlatinMarket API has no theme endpoints, so for now the app checks and commits only.
+     */
+    static final boolean EXTRA_PAGES = false;
+
+    /** -Dpanelcontroller.prefs=<name> keeps settings in a separate node (used by tests). */
     private final Preferences prefs = System.getProperty("panelcontroller.prefs", "").isBlank()
             ? Preferences.userNodeForPackage(PanelApp.class)
             : Preferences.userRoot().node(System.getProperty("panelcontroller.prefs"));
@@ -77,7 +90,9 @@ public final class PanelApp extends Application {
     @Override
     public void start(Stage primary) {
         this.stage = primary;
-        Thread.setDefaultUncaughtExceptionHandler((t, e) -> ErrorLog.write("yakalanmamış hata (" + t.getName() + ")", e));
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> ErrorLog.write("uncaught (" + t.getName() + ")", e));
+        T.init(prefs.get("lang", Locale.getDefault().getLanguage().equals("tr") ? "tr" : "en"));
+        loadFonts();
         theme = prefs.get("theme", "light");
 
         Path root = startRoot();
@@ -90,8 +105,8 @@ public final class PanelApp extends Application {
         ctx.activity = new ActivityFeed(code -> ctx.openGuide(code));
         ctx.navigator = this::show;
         vaultUi = new VaultUi(primary, vault, session, ctx.background, () -> ctx.refreshAll(), msg -> {
-            if (!msg.endsWith("…")) { // "Kaydediliyor…" style progress lines do not get a card
-                ctx.activity.note(msg.startsWith("✗") ? "err" : "ok", "API anahtarı", msg.replaceFirst("^[✓✗] ", ""));
+            if (!msg.endsWith("…")) {
+                ctx.activity.note(msg.startsWith("✗") ? "err" : "ok", "API", msg.replaceFirst("^[✓✗] ", ""));
             }
         });
 
@@ -99,10 +114,13 @@ public final class PanelApp extends Application {
         themeEveryWindow();
 
         publish = new PublishPage(ctx);
-        tools = new ToolsPage(ctx);
-        pages.addAll(List.of(publish, new RestorePage(ctx), new GitPage(ctx), new TasksPage(ctx), tools,
-                new ApiPage(ctx, vaultUi), new NotesPage(), new AboutPage(ctx),
-                new SettingsPage(ctx, vaultUi, this::changeProject, this::setTheme, () -> theme, this::showLock)));
+        pages.addAll(List.of(publish, new RestorePage(ctx), new GitPage(ctx)));
+        if (EXTRA_PAGES) {
+            tools = new ToolsPage(ctx);
+            pages.addAll(List.of(new TasksPage(ctx), tools, new ApiPage(ctx, vaultUi)));
+        }
+        pages.add(new SettingsPage(ctx, vaultUi, EXTRA_PAGES, this::changeProject, this::setTheme, () -> theme, this::showLock));
+        pages.add(new AboutPage(ctx));
 
         TabPane tabs = new TabPane();
         tabs.getStyleClass().add("shell");
@@ -123,7 +141,7 @@ public final class PanelApp extends Application {
         primary.setMinWidth(1080);
         primary.setMinHeight(700);
         primary.getIcons().setAll(icons);
-        if (vaultUi.hasStoredKey()) {
+        if (EXTRA_PAGES && vaultUi.hasStoredKey()) {
             showLock();
         } else {
             showMain();
@@ -146,6 +164,19 @@ public final class PanelApp extends Application {
         if (ctx != null) {
             ctx.worker.shutdownNow();
             ctx.background.shutdownNow();
+        }
+    }
+
+    /** Montserrat (bundled, SIL Open Font License): regular for text, bold for headings. */
+    private static void loadFonts() {
+        for (String w : new String[] {"Regular", "SemiBold", "Bold"}) {
+            try (InputStream in = PanelApp.class.getResourceAsStream("/fonts/Montserrat-" + w + ".ttf")) {
+                if (in != null) {
+                    Font.loadFont(in, 13);
+                }
+            } catch (IOException e) {
+                ErrorLog.write("font " + w, e);
+            }
         }
     }
 
@@ -178,7 +209,7 @@ public final class PanelApp extends Application {
     }
 
     private Node sidebar() {
-        ImageView logo = new ImageView(icons.isEmpty() ? null : icons.get(3));
+        ImageView logo = new ImageView(icons.size() > 3 ? icons.get(3) : null);
         logo.setFitWidth(32);
         logo.setFitHeight(32);
         VBox name = new VBox(0, Ui.label(AppInfo.NAME, "brand-name"), Ui.label("v" + AppInfo.VERSION + " " + AppInfo.STAGE, "brand-version"));
@@ -188,11 +219,11 @@ public final class PanelApp extends Application {
 
         VBox nav = new VBox(2);
         ToggleGroup group = new ToggleGroup();
-        String[] groups = {"Çalışma", null, null, null, null, null, "Uygulama", null, null};
+        nav.getChildren().add(Ui.label(T.t("nav.group.work").toUpperCase(Locale.ROOT), "nav-group"));
         for (int i = 0; i < pages.size(); i++) {
             Page p = pages.get(i);
-            if (groups[i] != null) {
-                nav.getChildren().add(Ui.label(groups[i].toUpperCase(java.util.Locale.ROOT), "nav-group"));
+            if (p.id().equals("settings")) {
+                nav.getChildren().add(Ui.label(T.t("nav.group.app").toUpperCase(Locale.ROOT), "nav-group"));
             }
             ToggleButton b = new ToggleButton(p.title());
             b.getStyleClass().add("nav-item");
@@ -204,7 +235,7 @@ public final class PanelApp extends Application {
             navButtons.add(b);
             nav.getChildren().add(b);
         }
-        // the badge sits on the right of the "Yayın" item (find its place before re-parenting the button)
+        // the badge (files that differ from live) sits on the right of the Publish item
         int publishIndex = nav.getChildren().indexOf(navButtons.get(0));
         StackPane publishItem = new StackPane();
         nav.getChildren().set(publishIndex, publishItem);
@@ -214,24 +245,24 @@ public final class PanelApp extends Application {
         publishBadge.setMouseTransparent(true);
         publishBadge.setVisible(false);
 
-        Button help = Ui.button("Kullanım kılavuzu", "guide");
+        Button help = Ui.button(T.t("nav.guide"), "guide");
         help.setMaxWidth(Double.MAX_VALUE);
         help.setAlignment(Pos.CENTER_LEFT);
         help.setOnAction(e -> ctx.openGuide(""));
         help.setTooltip(new Tooltip("F1"));
-        Button themeButton = Ui.button(theme.equals("dark") ? "Açık tema" : "Koyu tema", theme.equals("dark") ? "sun" : "moon", "ghost");
+        Button themeButton = Ui.button(T.t(theme.equals("dark") ? "nav.theme.light" : "nav.theme.dark"),
+                theme.equals("dark") ? "sun" : "moon", "ghost");
         themeButton.setMaxWidth(Double.MAX_VALUE);
         themeButton.setAlignment(Pos.CENTER_LEFT);
         themeButton.setOnAction(e -> {
             setTheme(theme.equals("dark") ? "light" : "dark");
-            themeButton.setText(theme.equals("dark") ? "Açık tema" : "Koyu tema");
+            themeButton.setText(T.t(theme.equals("dark") ? "nav.theme.light" : "nav.theme.dark"));
             themeButton.setGraphic(Icons.of(theme.equals("dark") ? "sun" : "moon", 16));
         });
 
-        VBox bottom = new VBox(6, help, themeButton);
         VBox side = new VBox(brand, nav);
         VBox.setVgrow(nav, Priority.ALWAYS);
-        side.getChildren().add(bottom);
+        side.getChildren().add(new VBox(6, help, themeButton));
         side.getStyleClass().add("sidebar");
         side.setPrefWidth(232);
         side.setMinWidth(232);
@@ -245,10 +276,10 @@ public final class PanelApp extends Application {
         chip.setAlignment(Pos.CENTER_LEFT);
         chip.getStyleClass().add("project-chip");
         chip.setOnMouseClicked(e -> show("settings"));
-        Tooltip.install(chip, new Tooltip("Proje klasörü (değiştirmek için tıkla)"));
-        Button refresh = Ui.iconButton("refresh", "Yenile (F5)");
+        Tooltip.install(chip, new Tooltip(T.t("header.project.tip")));
+        Button refresh = Ui.iconButton("refresh", T.t("header.refresh"));
         refresh.setOnAction(e -> refreshAndCompare());
-        ToggleButton activity = new ToggleButton("İşlemler");
+        ToggleButton activity = new ToggleButton(T.t("header.activity"));
         activity.getStyleClass().add("btn");
         activity.setGraphic(Icons.of("activity", 16));
         activity.setSelected(true);
@@ -262,7 +293,7 @@ public final class PanelApp extends Application {
     }
 
     private Node statusBar() {
-        Label credit = Ui.label(AppInfo.title() + "  ·  " + AppInfo.credit());
+        Label credit = Ui.label(AppInfo.title() + "  ·  " + T.t("status.credit", AppInfo.AUTHOR));
         ProgressIndicator spin = new ProgressIndicator();
         spin.setPrefSize(14, 14);
         spin.setMaxSize(14, 14);
@@ -303,7 +334,7 @@ public final class PanelApp extends Application {
             try {
                 current.refresh();
             } catch (RuntimeException e) {
-                ErrorLog.write("sayfa yenileme: " + current.id(), e);
+                ErrorLog.write("refresh " + current.id(), e);
             }
         }
     }
@@ -333,12 +364,11 @@ public final class PanelApp extends Application {
 
     private void changeProject(Path root) {
         if (!Files.isDirectory(root.resolve("kaynak"))
-                && !Ui.confirm(stage, "Bu klasörde kaynak/ yok",
-                root + "\n\nSeçilen klasör bir Panel Controller projesine benzemiyor. Yine de seçilsin mi?", "Seç")) {
+                && !Ui.confirm(stage, T.t("project.nosources.header"), T.t("project.nosources.text", root), T.t("common.select"))) {
             return;
         }
         ctx.setProject(root);
-        ctx.activity.note("ok", "Proje değişti", root.toString());
+        ctx.activity.note("ok", T.t("project.changed"), root.toString());
         refreshVisible();
         publish.compareQuietly();
     }
@@ -350,9 +380,6 @@ public final class PanelApp extends Application {
             if (w.getScene() != null) {
                 applyTheme(w.getScene().getRoot());
             }
-        }
-        if (stage.getScene() != null) {
-            applyTheme(stage.getScene().getRoot());
         }
         applyTheme(mainScene.getRoot());
         guide.setDark(name.equals("dark"));
@@ -389,25 +416,21 @@ public final class PanelApp extends Application {
         }
     }
 
-    /** First start: what to set up, with the system check, then straight to the settings page. */
+    /** First start: what to set up, with the system check. */
     private void welcome() {
         prefs.putBoolean("welcomed", true);
         SystemCheckView check = new SystemCheckView(ctx, () -> ctx.cfg.root());
-        VBox body = new VBox(12,
-                Ui.wrapped("Başlamak için üç adım:"),
-                Ui.wrapped("1.  Ayarlar → Proje: içinde kaynak/ olan proje klasörünü seç."),
-                Ui.wrapped("2.  Ayarlar → Mağaza CDN adresi: canlı tema dosyalarının adresini gir ve Kaydet."),
-                Ui.wrapped("3.  Aşağıda eksik görünen araç varsa Kur'a bas (isteğe bağlı)."),
-                Ui.label("Sistem kontrolü", "section-title"), check);
+        VBox body = new VBox(10, Ui.wrapped(T.t("welcome.intro")), Ui.wrapped(T.t("welcome.step1")),
+                Ui.wrapped(T.t("welcome.step2")), Ui.wrapped(T.t("welcome.step3")),
+                Ui.label(T.t("welcome.system"), "section-title"), check);
         body.setPrefWidth(720);
-        javafx.scene.control.Dialog<javafx.scene.control.ButtonType> d = new javafx.scene.control.Dialog<>();
+        Dialog<ButtonType> d = new Dialog<>();
         d.initOwner(stage);
         d.setTitle(AppInfo.NAME);
-        d.setHeaderText(AppInfo.NAME + "'a hoş geldin");
+        d.setHeaderText(T.t("welcome.header"));
         d.getDialogPane().setContent(body);
-        javafx.scene.control.ButtonType go = new javafx.scene.control.ButtonType("Ayarlara git",
-                javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-        d.getDialogPane().getButtonTypes().addAll(go, Ui.CANCEL);
+        ButtonType go = new ButtonType(T.t("welcome.go"), ButtonBar.ButtonData.OK_DONE);
+        d.getDialogPane().getButtonTypes().addAll(go, Ui.cancel());
         check.check();
         if (d.showAndWait().filter(b -> b == go).isPresent()) {
             show("settings");

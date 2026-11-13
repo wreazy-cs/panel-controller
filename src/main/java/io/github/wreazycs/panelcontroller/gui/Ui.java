@@ -21,9 +21,14 @@ import javafx.stage.Window;
 
 /** Small factories so every page builds buttons, cards and dialogs the same way. */
 final class Ui {
-    static final ButtonType OK = new ButtonType("Tamam", ButtonBar.ButtonData.OK_DONE);
-    static final ButtonType CANCEL = new ButtonType("Vazgeç", ButtonBar.ButtonData.CANCEL_CLOSE);
-    private static final NumberFormat NUMBER = NumberFormat.getIntegerInstance(Locale.forLanguageTag("tr-TR"));
+    /** Buttons in the chosen language (created on use, after the language is set). */
+    static ButtonType ok() {
+        return new ButtonType(T.t("common.ok"), ButtonBar.ButtonData.OK_DONE);
+    }
+
+    static ButtonType cancel() {
+        return new ButtonType(T.t("common.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
+    }
 
     private Ui() {}
 
@@ -111,14 +116,20 @@ final class Ui {
         return v;
     }
 
+    /** 17.268 in Turkish, 17,268 in English. */
     static String number(long n) {
-        return NUMBER.format(n);
+        return NumberFormat.getIntegerInstance(T.locale()).format(n);
+    }
+
+    /** %27 in Turkish, 27% in English. */
+    static String percent(double p) {
+        return T.t("fmt.percent", Math.round(p));
     }
 
     // ---------------------------------------------------------------- dialogs
 
     static void info(Window owner, String header, String text) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, text, OK);
+        Alert a = new Alert(Alert.AlertType.INFORMATION, text, ok());
         a.setHeaderText(header);
         a.setTitle("Panel Controller");
         a.initOwner(owner);
@@ -127,7 +138,7 @@ final class Ui {
 
     static boolean confirm(Window owner, String header, String text, String yes) {
         ButtonType go = new ButtonType(yes, ButtonBar.ButtonData.OK_DONE);
-        Alert a = new Alert(Alert.AlertType.CONFIRMATION, text, go, CANCEL);
+        Alert a = new Alert(Alert.AlertType.CONFIRMATION, text, go, cancel());
         a.setHeaderText(header);
         a.setTitle("Panel Controller");
         a.initOwner(owner);

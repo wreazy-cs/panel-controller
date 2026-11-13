@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Panel Controller - User guide</title>
+<style>
+{{FONTS}}
+  :root {
+    --bg: #F3F5F8; --surface: #FFFFFF; --alt: #F7F8FA; --border: #DCE1E8; --text: #1B2433; --muted: #5A6B85;
+    --accent: #2D65E3; --accent-soft: #E4ECFB; --accent-text: #1A47A8;
+    --ok: #1F6B38; --ok-soft: #E3F2E7; --warn: #7A5200; --warn-soft: #FFF1CC; --err: #9B1F1B; --err-soft: #FBE4E2;
+    --code: #F1F3F7;
+  }
+  html.dark {
+    --bg: #14181F; --surface: #1C212A; --alt: #232A35; --border: #303846; --text: #E6EAF0; --muted: #9AA6B8;
+    --accent: #4F82F0; --accent-soft: #22325A; --accent-text: #A9C3FA;
+    --ok: #7BD79A; --ok-soft: #1A3226; --warn: #F2C35B; --warn-soft: #3A2F14; --err: #FF8F86; --err-soft: #3E1F1E;
+    --code: #171B22;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: 'Montserrat', 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: var(--text); background: var(--bg); }
+  h1, h2, h3, b, th, .nav-head b { font-weight: 700; }
+  .layout { display: flex; height: 100%; }
+  nav { width: 270px; flex: none; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .nav-head { padding: 18px 16px 10px; }
+  .nav-head b { font-size: 15px; }
+  .nav-head .ver { color: var(--muted); font-size: 12px; }
+  .search { margin: 8px 16px 6px; position: relative; }
+  .search input { width: 100%; padding: 8px 10px 8px 32px; border: 1px solid var(--border); border-radius: 6px;
+                  background: var(--alt); color: var(--text); font: inherit; outline: none; }
+  .search input:focus { border-color: var(--accent); }
+  .search svg { position: absolute; left: 9px; top: 9px; }
+  .count { margin: 0 16px 8px; color: var(--muted); font-size: 12px; min-height: 18px; }
+  .toc { overflow-y: auto; padding: 0 8px 16px; flex: 1; }
+  .toc a { display: block; padding: 6px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+  .toc a:hover { background: var(--alt); color: var(--text); }
+  .toc a.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+  .toc .group { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 12px 10px 4px; font-weight: 600; }
+  main { flex: 1; overflow-y: auto; padding: 28px 40px 80px; }
+  .wrap { max-width: 900px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 0 0 10px; }
+  h3 { font-size: 15px; margin: 18px 0 6px; }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin: 0 0 18px; }
+  section.flash { box-shadow: 0 0 0 3px var(--accent); }
+  .lead { color: var(--muted); margin: 0 0 22px; }
+  p { margin: 6px 0 10px; }
+  code, kbd { font-family: Consolas, monospace; font-size: 12.5px; background: var(--code); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+  kbd { border-bottom-width: 2px; }
+  pre { font-family: Consolas, monospace; font-size: 12.5px; background: var(--code); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { background: var(--alt); color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 700; white-space: nowrap; background: var(--alt); color: var(--muted); }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.err { background: var(--err-soft); color: var(--err); }
+  .chip.info { background: var(--accent-soft); color: var(--accent-text); }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 6px; margin: 10px 0; }
+  .note.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 10px 0; }
+  .steps > li { counter-increment: s; position: relative; padding: 4px 0 10px 40px; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 2px; width: 26px; height: 26px; border-radius: 13px;
+                        background: var(--accent-soft); color: var(--accent-text); font-weight: 700; text-align: center; line-height: 26px; }
+  figure { margin: 12px 0 16px; }
+  figcaption { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+  svg text { font-family: 'Montserrat', 'Segoe UI', sans-serif; }
+  .err-group td { background: var(--alt); font-weight: 700; color: var(--muted); }
+  tr.code-row td:first-child { white-space: nowrap; }
+  .hidden { display: none !important; }
+  .empty { display: none; color: var(--muted); padding: 30px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .box { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--alt); }
+  .box b { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="nav-head"><b>User guide</b><div class="ver">Panel Controller {{VERSION}}</div></div>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <input id="q" type="search" placeholder="Search a topic or error code (e.g. PC-203)" autocomplete="off">
+  </div>
+  <div class="count" id="count"></div>
+  <div class="toc" id="toc"></div>
+</nav>
+<main id="main">
+<div class="wrap">
+  <h1>Panel Controller</h1>
+  <p class="lead">Version {{VERSION}} · {{AUTHOR}}. Type a word or an error code in the box on the left. Clicking an error code in the app opens this page at that code.</p>
+
+  <section id="baslarken" data-group="Getting started">
+    <h2>What it does</h2>
+    <p>Checks the theme CSS and JS files before they are pasted into the panel, and records the changes with git.</p>
+    <figure>
+      <svg viewBox="0 0 860 190" width="100%" role="img" aria-label="Flow">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="var(--muted)"/></marker></defs>
+        <g font-size="13">
+          <rect x="10" y="40" width="140" height="64" rx="8" fill="var(--alt)" stroke="var(--border)"/>
+          <text x="80" y="66" text-anchor="middle" font-weight="700" fill="var(--text)">kaynak/</text>
+          <text x="80" y="86" text-anchor="middle" fill="var(--muted)" font-size="12">small pieces</text>
+          <rect x="190" y="40" width="120" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="250" y="66" text-anchor="middle" font-weight="700" fill="var(--accent-text)">Build</text>
+          <text x="250" y="86" text-anchor="middle" fill="var(--accent-text)" font-size="12">join</text>
+          <rect x="350" y="40" width="130" height="64" rx="8" fill="var(--alt)" stroke="var(--border)"/>
+          <text x="415" y="66" text-anchor="middle" font-weight="700" fill="var(--text)">cikti/</text>
+          <text x="415" y="86" text-anchor="middle" fill="var(--muted)" font-size="12">panel files</text>
+          <rect x="520" y="40" width="130" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="585" y="66" text-anchor="middle" font-weight="700" fill="var(--accent-text)">Validate</text>
+          <text x="585" y="86" text-anchor="middle" fill="var(--accent-text)" font-size="12">panel simulation</text>
+          <rect x="690" y="40" width="160" height="64" rx="8" fill="var(--ok-soft)" stroke="var(--ok)"/>
+          <text x="770" y="66" text-anchor="middle" font-weight="700" fill="var(--ok)">Panel</text>
+          <text x="770" y="86" text-anchor="middle" fill="var(--ok)" font-size="12">pasted by hand</text>
+          <path d="M150 72H186 M310 72H346 M480 72H516 M650 72H686" stroke="var(--muted)" stroke-width="2" marker-end="url(#ar)"/>
+          <rect x="690" y="134" width="160" height="44" rx="8" fill="var(--warn-soft)" stroke="var(--warn)"/>
+          <text x="770" y="161" text-anchor="middle" font-weight="700" fill="var(--warn)">Backup</text>
+          <path d="M770 104V130" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+          <text x="560" y="160" text-anchor="end" fill="var(--muted)" font-size="12">Copy of the live files before uploading →</text>
+        </g>
+      </svg>
+    </figure>
+    <div class="grid2">
+      <div class="box"><b>The app</b>Backs up, builds, validates, compares with live, copies files to the clipboard, sends to git.</div>
+      <div class="box"><b>You</b>Write the code, open the slot in the panel, paste and save.</div>
+    </div>
+    <div class="note warn"><b>Why is uploading manual?</b> The PlatinMarket API (Reform API) has no endpoint for theme CSS and JS files. The app cannot send a file to the panel; it copies the files to the clipboard in order.</div>
+  </section>
+
+  <section id="kurulum" data-group="Getting started">
+    <h2>Installation</h2>
+    <ol class="steps">
+      <li>Run <code>Panel Controller-&lt;version&gt;.exe</code>. No administrator rights and no Java needed.</li>
+      <li>Settings → Project → <i>Choose folder</i>: pick the folder that contains <code>kaynak/</code>.</li>
+      <li>Settings → <i>Store CDN address</i>: <code>https://platincdn.com/&lt;store no&gt;/tema/%s</code>. <i>Test connection</i>, then <i>Save</i>.</li>
+      <li>Change the language and theme in Settings if you like.</li>
+    </ol>
+    <p>CDN address: the address containing <code>tema/genel.css</code> in the store page's source, with <code>%s</code> in place of the file name.</p>
+  </section>
+
+  <section id="sistem" data-group="Getting started">
+    <h2>System check</h2>
+    <p>Settings → <i>System check</i> and the first-start window. Java comes with the app; the rest is optional.</p>
+    <table>
+      <tr><th>Tool</th><th>Without it</th></tr>
+      <tr><td>Git</td><td>The Git page does not work.</td></tr>
+      <tr><td>Node.js</td><td>The JS syntax check is skipped (<a href="#PC-208" data-go="PC-208">PC-208</a>).</td></tr>
+      <tr><td>Python</td><td>The project's Python scripts cannot run or be checked.</td></tr>
+      <tr><td>winget</td><td>Missing tools cannot be installed with one click.</td></tr>
+    </table>
+    <p>The <i>Install</i> button opens winget in a command window; licence and administrator prompts appear there.</p>
+  </section>
+
+  <section id="gunluk-akis" data-group="Use">
+    <h2>Daily workflow</h2>
+    <ol class="steps">
+      <li><b>Publish → Prepare.</b> Backup, build and panel simulation run. All three steps should turn green. If one is red, click the code on the activity card and fix it; <b>do not upload.</b></li>
+      <li><b>Compare with live</b> (runs on its own after Prepare). <span class="chip warn">different</span> files are the ones to upload.</li>
+      <li><b>Upload wizard.</b> Copies the different files to the clipboard in order and names the slot for each.</li>
+      <li>After the wizard the comparison runs again. All should be <span class="chip ok">same</span>. If not, see <a href="#onbellek" data-go="onbellek">cache</a>.</li>
+      <li>Check the browser console on the site. Only errors from <code>platincdn.com/…/tema/</code> are ours.</li>
+      <li><b>Git → commit and push.</b></li>
+    </ol>
+  </section>
+
+  <section id="yayin" data-group="Screens">
+    <h2>Publish screen</h2>
+    <figure>
+      <svg viewBox="0 0 860 330" width="100%" role="img" aria-label="Publish screen">
+        <g font-size="12">
+          <rect x="0.5" y="0.5" width="859" height="329" rx="10" fill="var(--bg)" stroke="var(--border)"/>
+          <rect x="0.5" y="0.5" width="150" height="329" rx="10" fill="var(--surface)" stroke="var(--border)"/>
+          <text x="16" y="30" font-weight="700" fill="var(--text)">Panel Controller</text>
+          <rect x="10" y="50" width="130" height="26" rx="6" fill="var(--accent-soft)"/><text x="22" y="67" fill="var(--accent-text)" font-weight="700">Publish</text>
+          <text x="22" y="97" fill="var(--muted)">Restore</text><text x="22" y="122" fill="var(--muted)">Git</text>
+          <text x="22" y="160" fill="var(--muted)">Settings</text><text x="22" y="185" fill="var(--muted)">About</text>
+          <g fill="var(--surface)" stroke="var(--border)">
+            <rect x="166" y="20" width="118" height="54" rx="6"/><rect x="292" y="20" width="118" height="54" rx="6"/><rect x="418" y="20" width="118" height="54" rx="6"/><rect x="544" y="20" width="118" height="54" rx="6"/>
+            <rect x="166" y="86" width="496" height="70" rx="6"/>
+            <rect x="166" y="220" width="496" height="96" rx="6"/>
+            <rect x="676" y="20" width="172" height="296" rx="6"/>
+          </g>
+          <rect x="166" y="20" width="3" height="54" fill="var(--ok)"/><rect x="292" y="20" width="3" height="54" fill="var(--warn)"/><rect x="418" y="20" width="3" height="54" fill="var(--ok)"/><rect x="544" y="20" width="3" height="54" fill="var(--accent)"/>
+          <text x="178" y="40" fill="var(--muted)" font-size="10">LAST BACKUP</text><text x="178" y="60" fill="var(--ok)" font-weight="700">12 min ago</text>
+          <text x="304" y="40" fill="var(--muted)" font-size="10">LIVE DIFFERENCE</text><text x="304" y="60" fill="var(--warn)" font-weight="700">2 different</text>
+          <text x="430" y="40" fill="var(--muted)" font-size="10">BUILD</text><text x="430" y="60" fill="var(--ok)" font-weight="700">Up to date</text>
+          <text x="556" y="40" fill="var(--muted)" font-size="10">GIT</text><text x="556" y="60" fill="var(--accent-text)" font-weight="700">3 changes</text>
+          <circle cx="190" cy="120" r="10" fill="var(--ok-soft)" stroke="var(--ok)"/><circle cx="300" cy="120" r="10" fill="var(--ok-soft)" stroke="var(--ok)"/><circle cx="410" cy="120" r="10" fill="var(--ok-soft)" stroke="var(--ok)"/>
+          <text x="206" y="124" fill="var(--text)">Back up</text><text x="316" y="124" fill="var(--text)">Build</text><text x="426" y="124" fill="var(--text)">Validate</text>
+          <rect x="560" y="108" width="88" height="26" rx="5" fill="var(--accent)"/><text x="604" y="125" text-anchor="middle" fill="#fff" font-weight="700">Prepare</text>
+          <rect x="166" y="168" width="496" height="40" rx="6" fill="var(--warn-soft)" stroke="var(--warn)"/><text x="180" y="192" fill="var(--warn)">2 files differ from live …</text>
+          <rect x="520" y="176" width="132" height="24" rx="5" fill="var(--accent)"/><text x="586" y="192" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Start wizard</text>
+          <text x="180" y="244" fill="var(--muted)" font-size="10"># FILE   SLOT   TARGET   STATE   LIVE</text>
+          <text x="180" y="272" fill="var(--text)">1 anasayfa.css   CSS / Anasayfa</text><rect x="520" y="261" width="40" height="15" rx="7" fill="var(--ok-soft)"/><rect x="570" y="261" width="44" height="15" rx="7" fill="var(--warn-soft)"/>
+          <text x="180" y="300" fill="var(--text)">9 genel.js   JS / Genel</text><rect x="520" y="289" width="40" height="15" rx="7" fill="var(--ok-soft)"/><rect x="570" y="289" width="44" height="15" rx="7" fill="var(--ok-soft)"/>
+          <text x="690" y="42" font-weight="700" fill="var(--text)">Activity</text>
+          <rect x="688" y="54" width="148" height="56" rx="6" fill="var(--alt)" stroke="var(--border)"/><rect x="688" y="54" width="3" height="56" fill="var(--ok)"/><text x="700" y="74" fill="var(--text)" font-weight="700">Prepare</text><text x="700" y="94" fill="var(--muted)" font-size="11">Ready. Order: …</text>
+        </g>
+        <g font-size="12" font-weight="700" fill="#fff">
+          <circle cx="166" cy="20" r="10" fill="var(--accent)"/><text x="166" y="24" text-anchor="middle">A</text>
+          <circle cx="166" cy="86" r="10" fill="var(--accent)"/><text x="166" y="90" text-anchor="middle">B</text>
+          <circle cx="166" cy="168" r="10" fill="var(--accent)"/><text x="166" y="172" text-anchor="middle">C</text>
+          <circle cx="166" cy="220" r="10" fill="var(--accent)"/><text x="166" y="224" text-anchor="middle">D</text>
+          <circle cx="676" cy="20" r="10" fill="var(--accent)"/><text x="676" y="24" text-anchor="middle">E</text>
+        </g>
+      </svg>
+    </figure>
+    <table>
+      <tr><th>Part</th><th>What it shows</th></tr>
+      <tr><td><b>A</b> Status cards</td><td>Last backup, live difference, build, git. Colours: <a href="#kartlar" data-go="kartlar">Status cards</a>.</td></tr>
+      <tr><td><b>B</b> Prepare</td><td>Prepare and the three-step indicator. <i>Single step</i>: back up only, build only, validate only, review copy.</td></tr>
+      <tr><td><b>C</b> Notice / wizard</td><td>Shows files that differ from live; the wizard runs here.</td></tr>
+      <tr><td><b>D</b> Files</td><td>In paste order. State: <span class="chip ok">ready</span> <span class="chip warn">rebuild</span> <span class="chip warn">over target</span>. Live: <span class="chip ok">same</span> <span class="chip warn">different</span> <span class="chip err">unreadable</span>. The button at the end of a row copies the file.</td></tr>
+      <tr><td><b>E</b> Activity</td><td>The result of every action. See <a href="#islemler" data-go="islemler">Activity cards</a>.</td></tr>
+    </table>
+  </section>
+
+  <section id="kartlar" data-group="Screens">
+    <h2>Status cards</h2>
+    <table>
+      <tr><th>Card</th><th><span class="chip ok">green</span></th><th><span class="chip warn">yellow</span></th><th><span class="chip err">red</span></th></tr>
+      <tr><td>Last backup</td><td>Under 24 hours</td><td>1–7 days</td><td>None or over 7 days</td></tr>
+      <tr><td>Live difference</td><td>All same</td><td>Some files differ</td><td>CDN unreadable</td></tr>
+      <tr><td>Build</td><td>Up to date</td><td>Newer sources or over target</td><td>Last build failed</td></tr>
+      <tr><td>Git</td><td>Clean</td><td>Commits not pushed</td><td>Unreadable</td></tr>
+    </table>
+    <p>Cards refresh every 30 seconds and with <kbd>F5</kbd>. The comparison with live runs on its own at start.</p>
+  </section>
+
+  <section id="sihirbaz" data-group="Screens">
+    <h2>Upload wizard</h2>
+    <p>Takes only the files that are <span class="chip warn">different</span> from live. Order: <b>page slots first</b> (anasayfa, kategori, urun, sepet), <b>the general slot last</b>. The general slot affects every page, so it goes last.</p>
+    <ol class="steps">
+      <li>The file is copied to the clipboard.</li>
+      <li>Open the named slot in the panel, delete its content (<kbd>Ctrl</kbd>+<kbd>A</kbd>, <kbd>Delete</kbd>), <kbd>Ctrl</kbd>+<kbd>V</kbd>, save.</li>
+      <li><i>Pasted, next</i>. On the last step <i>Pasted, finish</i>; the comparison runs again.</li>
+    </ol>
+    <p>If the last backup is older than 2 hours, the wizard asks first: <i>Back up now and continue</i>, <i>Continue without backup</i> or <i>Cancel</i>.</p>
+    <div class="note warn">Copy the file from the app, not from an editor. An open editor tab can show old content.</div>
+  </section>
+
+  <section id="geri-don" data-group="Screens">
+    <h2>Restore</h2>
+    <ol class="steps">
+      <li>The top backup is the live state just before the last upload.</li>
+      <li><i>Copy to clipboard</i> next to the file.</li>
+      <li>Open the same slot in the panel, delete its content, paste, save.</li>
+      <li>Publish → <i>Compare with live</i>.</li>
+    </ol>
+  </section>
+
+  <section id="git" data-group="Screens">
+    <h2>Git</h2>
+    <p>Tick the files, write a short message, <i>Commit</i>. The message goes out like this:</p>
+    <pre>13.11.2026-Cuma-14.05 fixed the cart notice -p
+
+Panel Controller ile gönderildi: https://github.com/wreazy-cs/panel-controller</pre>
+    <p><code>-p</code>: sent from Panel Controller (the date part follows the project's Turkish convention). The author is your own git account.</p>
+    <p><i>Push</i> runs build and validate first; if they are not clean, nothing is pushed (<a href="#PC-405" data-go="PC-405">PC-405</a>). A push does not upload anything to the panel.</p>
+  </section>
+
+  <section id="ayarlar" data-group="Screens">
+    <h2>Settings and About</h2>
+    <table>
+      <tr><td>Project</td><td>Project folder, store CDN address, slot target (65,000), total budget (355,000). Stored per project.</td></tr>
+      <tr><td>System check</td><td>See <a href="#sistem" data-go="sistem">System check</a>.</td></tr>
+      <tr><td>Language</td><td>Turkish or English. Takes effect after restarting the app.</td></tr>
+      <tr><td>Appearance</td><td>Light or dark theme.</td></tr>
+      <tr><td>App files</td><td>Error log: <code>%LOCALAPPDATA%\PanelController\error.log</code>.</td></tr>
+    </table>
+    <p>The About page has the release notes and the licence.</p>
+  </section>
+
+  <section id="kaynak-kurallari" data-group="Writing code">
+    <h2>Source file rules</h2>
+    <p>The first line of every piece is a meta line:</p>
+    <pre>/*@vt 25 | SEARCH BAR | ezer: skin/css/header.css &gt; #urun_arama_form */</pre>
+    <p><code>25</code> is the piece number and must be unique across all slots. To find which piece a rule came from: Publish → Single step → <i>Review copy</i>, then search <code>IC-VT-25</code> in <code>veri/uretilen/okunur/</code>.</p>
+    <table>
+      <tr><th>Rule</th><th>Code</th></tr>
+      <tr><td>JS sources are pure ASCII; a Turkish letter is written like <code>ç</code></td><td><a href="#PC-101" data-go="PC-101">PC-101</a></td></tr>
+      <tr><td>No HTML character codes (<code>&amp;#39;</code>)</td><td><a href="#PC-102" data-go="PC-102">PC-102</a></td></tr>
+      <tr><td>Every character must exist in windows-1254</td><td><a href="#PC-103" data-go="PC-103">PC-103</a></td></tr>
+      <tr><td>A JS piece ends with <code>;</code>; no multi-line strings or backticks</td><td><a href="#PC-106" data-go="PC-106">PC-106</a>, <a href="#PC-107" data-go="PC-107">PC-107</a></td></tr>
+      <tr><td>No comments in the panel copy</td><td><a href="#PC-110" data-go="PC-110">PC-110</a></td></tr>
+    </table>
+    <table>
+      <tr><th>Do not write</th><th>Write</th></tr>
+      <tr><td><code>≤ ≥</code></td><td><code>&lt;= &gt;=</code></td></tr>
+      <tr><td><code>→ ←</code></td><td><code>-&gt; &lt;-</code></td></tr>
+      <tr><td><code>“ ” ‘ ’</code></td><td><code>" '</code></td></tr>
+    </table>
+  </section>
+
+  <section id="slotlar" data-group="Writing code">
+    <h2>Slots</h2>
+    <table>
+      <tr><th>Source folder</th><th>Panel slot</th><th>Loaded on</th></tr>
+      <tr><td><code>genel</code>, <code>genel-js</code></td><td>Genel</td><td>Every page</td></tr>
+      <tr><td><code>anasayfa</code>, <code>anasayfa-js</code></td><td>Anasayfa</td><td>Home page</td></tr>
+      <tr><td><code>kategori</code>, <code>kategori-js</code></td><td>Kategori</td><td>Category pages</td></tr>
+      <tr><td><code>urun</code>, <code>urun-js</code></td><td>Urun</td><td>Product page</td></tr>
+      <tr><td><code>sepet</code>, <code>sepet-js</code></td><td>Sepet</td><td>Cart page</td></tr>
+    </table>
+    <p>Total budget 355,000 characters (<a href="#PC-111" data-go="PC-111">PC-111</a>), slot target 65,000 (<a href="#PC-112" data-go="PC-112">PC-112</a>).</p>
+  </section>
+
+  <section id="onbellek" data-group="Writing code">
+    <h2>If a change does not show</h2>
+    <ol class="steps">
+      <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> on the page, then a private window.</li>
+      <li>Publish → <i>Compare with live</i>. If <span class="chip ok">same</span>, the upload is right and the browser cache is the problem.</li>
+      <li>If <span class="chip warn">different</span>, the file was not saved or went into the wrong slot.</li>
+    </ol>
+  </section>
+
+  <section id="islemler" data-group="Problems">
+    <h2>Activity cards</h2>
+    <p>Every action opens a card in the <i>Activity</i> panel on the right. The edge colour gives the result: <span class="chip ok">green</span> done, <span class="chip warn">yellow</span> warning, <span class="chip err">red</span> failed. A card shows the error code, the file, <i>What to do</i> and the folded <i>Full output</i>. Clicking the code opens this guide at that row.</p>
+  </section>
+
+  <section id="hata-kodlari" data-group="Problems">
+    <h2>Error codes</h2>
+    <p>First digit: <b>1</b> build, <b>2</b> panel simulation, <b>3</b> live site and backup, <b>4</b> git, <b>9</b> unexpected.</p>
+    <table id="errors">
+      <tr><th>Code</th><th>Level</th><th>Meaning</th><th>What to do</th></tr>
+      {{ERRORS}}
+    </table>
+  </section>
+
+  <section id="kisayollar" data-group="Problems">
+    <h2>Keyboard shortcuts</h2>
+    <table>
+      <tr><td><kbd>F5</kbd></td><td>Refresh and compare with live</td></tr>
+      <tr><td><kbd>F1</kbd></td><td>Open the guide</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>1</kbd> … <kbd>5</kbd></td><td>Pages in the menu</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd></td><td>Search in the guide</td></tr>
+    </table>
+  </section>
+
+  <section id="sss" data-group="Problems">
+    <h2>Questions</h2>
+    <h3>I pushed, but the site did not change</h3>
+    <p>A push only records the change on GitHub. Uploading to the panel is done with Publish → wizard.</p>
+    <h3>Why does the app not upload to the panel itself?</h3>
+    <p>The PlatinMarket API has no endpoint for theme CSS and JS files.</p>
+    <h3><code>Unexpected token '}'</code> in the console</h3>
+    <p>Comes from the platform's own code on the home page for signed-in users. Only errors from <code>platincdn.com/…/tema/</code> are ours.</p>
+  </section>
+
+  <div class="empty" id="empty">No results.</div>
+</div>
+</main>
+</div>
+<script>
+var LABEL_FOUND = ' sections found', LABEL_NONE = 'No results';
+</script>
+{{SCRIPT}}
+</body>
+</html>
